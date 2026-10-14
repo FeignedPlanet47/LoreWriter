@@ -155,15 +155,27 @@ docker compose -f docker-compose.prod.yml up -d --build
 - пароль по-прежнему хранится только как Argon2id-хеш;
 - вход и refresh запрещены до подтверждения email.
 
-### Локальная разработка
+### Реальная отправка SMTP
 
-`docker compose up --build` поднимает Mailpit. Письма не уходят в интернет, а доступны в браузере:
+Обычный запуск:
 
-```text
-http://localhost:8025
+```bash
+docker compose up --build
 ```
 
-Это удобно для проверки регистрации без реального SMTP.
+использует SMTP-параметры из `.env` и отправляет письмо на реальный адрес пользователя.
+
+Перед регистрацией можно проверить отправку отдельно:
+
+```bash
+docker compose exec api python -m app.send_test_email your-real-email@example.com
+```
+
+Для локального Mailpit используйте отдельный override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mailpit.yml up --build
+```
 
 ### Production SMTP
 

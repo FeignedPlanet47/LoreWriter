@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import ru.it.novelforge.domain.model.StoryAccessRole
 
 private enum class EditorSection {
     GRAPH,
@@ -62,11 +63,11 @@ fun EditorWorkspaceScreen(
         rememberCoroutineScope()
 
     var section by
-        remember {
-            mutableStateOf(
-                EditorSection.GRAPH
-            )
-        }
+    remember {
+        mutableStateOf(
+            EditorSection.GRAPH
+        )
+    }
 
     fun openDrawer() {
         scope.launch {
@@ -147,6 +148,21 @@ fun EditorWorkspaceScreen(
                                     .colorScheme
                                     .onSurfaceVariant
                         )
+
+                        graph?.story?.let { story ->
+                            if (story.accessRole != StoryAccessRole.OWNER) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (story.accessRole == StoryAccessRole.READER) {
+                                        "Общий доступ: только чтение"
+                                    } else {
+                                        "Общий доступ: редактор"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
 
                     HorizontalDivider()
@@ -165,7 +181,7 @@ fun EditorWorkspaceScreen(
                         },
                         selected =
                             section ==
-                                EditorSection.GRAPH,
+                                    EditorSection.GRAPH,
                         onClick = {
                             selectSection(
                                 EditorSection.GRAPH
@@ -193,7 +209,7 @@ fun EditorWorkspaceScreen(
                         },
                         selected =
                             section ==
-                                EditorSection.MANUSCRIPT,
+                                    EditorSection.MANUSCRIPT,
                         onClick = {
                             selectSection(
                                 EditorSection.MANUSCRIPT
@@ -221,7 +237,7 @@ fun EditorWorkspaceScreen(
                         },
                         selected =
                             section ==
-                                EditorSection.WORD_DOCUMENT,
+                                    EditorSection.WORD_DOCUMENT,
                         onClick = {
                             selectSection(
                                 EditorSection.WORD_DOCUMENT
@@ -249,7 +265,7 @@ fun EditorWorkspaceScreen(
                         },
                         selected =
                             section ==
-                                EditorSection.CHARACTERS,
+                                    EditorSection.CHARACTERS,
                         onClick = {
                             selectSection(
                                 EditorSection.CHARACTERS

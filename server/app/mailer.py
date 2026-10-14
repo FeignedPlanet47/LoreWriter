@@ -41,6 +41,11 @@ def send_verification_email(email: str, display_name: str, code: str) -> None:
         subtype="html",
     )
 
+    send_message(message)
+
+
+def send_message(message: EmailMessage) -> None:
+    """Send an already-built email through the configured real SMTP server."""
     context = ssl.create_default_context()
 
     if settings.smtp_use_ssl:

@@ -9,6 +9,7 @@ import ru.it.novelforge.data.local.StoryNodeEntity
 import ru.it.novelforge.domain.model.CharacterProfile
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.Story
+import ru.it.novelforge.domain.model.StoryAccessRole
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryNode
 import ru.it.novelforge.domain.model.TextFormatMark
@@ -25,6 +26,8 @@ fun StoryEntity.toDomain() = Story(
     cloudRevision = cloudRevision,
     isDirty = isDirty,
     pendingDelete = pendingDelete,
+    accessRole = runCatching { StoryAccessRole.valueOf(accessRole) }
+        .getOrDefault(StoryAccessRole.OWNER),
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -40,6 +43,7 @@ fun Story.toEntity() = StoryEntity(
     cloudRevision = cloudRevision,
     isDirty = isDirty,
     pendingDelete = pendingDelete,
+    accessRole = accessRole.name,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

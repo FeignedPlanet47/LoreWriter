@@ -68,6 +68,8 @@ fun ManuscriptScreen(
         return
     }
 
+    val canEdit = story.accessRole.canEdit
+
     var textValue by remember(story.id) {
         mutableStateOf(
             TextFieldValue(
@@ -101,14 +103,14 @@ fun ManuscriptScreen(
 
     DisposableEffect(story.id) {
         onDispose {
-            if (latestText != latestSavedText) {
+            if (canEdit && latestText != latestSavedText) {
                 viewModel.updateManuscript(latestText)
             }
         }
     }
 
-    LaunchedEffect(text) {
-        if (text == savedText) return@LaunchedEffect
+    LaunchedEffect(text, canEdit) {
+        if (!canEdit || text == savedText) return@LaunchedEffect
         delay(600)
         viewModel.updateManuscript(text)
         savedText = text
@@ -128,7 +130,9 @@ fun ManuscriptScreen(
                     Column {
                         Text("Текст новеллы")
                         Text(
-                            text = if (text == savedText) {
+                            text = if (!canEdit) {
+                                "Только чтение"
+                            } else if (text == savedText) {
                                 "Сохранено автоматически"
                             } else {
                                 "Сохранение…"
@@ -212,6 +216,7 @@ fun ManuscriptScreen(
                         "Пишите новеллу обычным текстом. Здесь можно хранить линейную версию истории, черновик или готовый литературный текст…"
                     )
                 },
+                readOnly = !canEdit,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,

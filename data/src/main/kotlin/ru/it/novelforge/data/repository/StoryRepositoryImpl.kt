@@ -24,6 +24,7 @@ import ru.it.novelforge.data.local.StoryNodeEntity
 import ru.it.novelforge.data.mapper.toDomain
 import ru.it.novelforge.data.mapper.toEntity
 import ru.it.novelforge.data.network.CharacterDto
+import ru.it.novelforge.data.network.CreateShareLinkRequestDto
 import ru.it.novelforge.data.network.StoryApi
 import ru.it.novelforge.data.network.StoryConnectionDto
 import ru.it.novelforge.data.network.StoryNodeDto
@@ -34,6 +35,7 @@ import ru.it.novelforge.data.network.TextFormatMarkDto
 import ru.it.novelforge.domain.model.CharacterProfile
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.Story
+import ru.it.novelforge.domain.model.StoryAccessRole
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
@@ -134,6 +136,7 @@ class StoryRepositoryImpl @Inject constructor(
                     cloudRevision = 0,
                     isDirty = true,
                     pendingDelete = false,
+                    accessRole = StoryAccessRole.OWNER.name,
                     createdAt = now,
                     updatedAt = now
                 )
@@ -157,7 +160,7 @@ class StoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateStory(story: Story) {
-        val existing = requireOwnedStory(story.id)
+        val existing = requireEditableStory(story.id)
         dao.updateStory(
             story.copy(
                 ownerUserId = existing.ownerUserId,
@@ -173,19 +176,19 @@ class StoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateManuscript(storyId: Long, manuscript: String) {
-        requireOwnedStory(storyId)
+        requireEditableStory(storyId)
         dao.updateManuscript(storyId, manuscript, System.currentTimeMillis())
         tryPushStory(storyId)
     }
 
     override suspend fun updateWordDocument(storyId: Long, wordDocument: String) {
-        requireOwnedStory(storyId)
+        requireEditableStory(storyId)
         dao.updateWordDocument(storyId, wordDocument, System.currentTimeMillis())
         tryPushStory(storyId)
     }
 
     override suspend fun deleteStory(storyId: Long) {
-        val story = requireOwnedStory(storyId)
+        val story = requireOwnerStory(storyId)
         dao.markStoryPendingDelete(storyId, System.currentTimeMillis())
 
         if (story.cloudId == null || sessionStore.currentUser.value == null) {
@@ -200,7 +203,7 @@ class StoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun upsertCharacter(character: CharacterProfile): Long {
-        requireOwnedStory(character.storyId)
+        requireEditableStory(character.storyId)
         val id = database.withTransaction {
             val savedId = if (character.id == 0L) {
                 dao.insertCharacter(character.toEntity())
@@ -217,7 +220,7 @@ class StoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteCharacter(characterId: Long) {
         val owningStoryId = dao.getCharacterStoryId(characterId) ?: return
-        requireOwnedStory(owningStoryId)
+        requireEditableStory(owningStoryId)
         val storyId = database.withTransaction {
             val id = dao.getCharacterStoryId(characterId)
             dao.deleteCharacter(characterId)
@@ -228,7 +231,7 @@ class StoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun upsertNode(node: StoryNode): Long {
-        requireOwnedStory(node.storyId)
+        requireEditableStory(node.storyId)
         val id = database.withTransaction {
             val savedId = if (node.id == 0L) {
                 dao.insertNode(node.toEntity())
@@ -245,7 +248,7 @@ class StoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteNode(nodeId: Long) {
         val owningStoryId = dao.getNodeStoryId(nodeId) ?: return
-        requireOwnedStory(owningStoryId)
+        requireEditableStory(owningStoryId)
         val storyId = database.withTransaction {
             val id = dao.getNodeStoryId(nodeId)
             dao.deleteNode(nodeId)
@@ -257,7 +260,7 @@ class StoryRepositoryImpl @Inject constructor(
 
     override suspend fun updateNodePosition(nodeId: Long, x: Float, y: Float) {
         val owningStoryId = dao.getNodeStoryId(nodeId) ?: return
-        requireOwnedStory(owningStoryId)
+        requireEditableStory(owningStoryId)
         val storyId = database.withTransaction {
             val id = dao.getNodeStoryId(nodeId)
             dao.updateNodePosition(nodeId, x, y)
@@ -268,7 +271,7 @@ class StoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun upsertConnection(connection: StoryConnection): Long {
-        requireOwnedStory(connection.storyId)
+        requireEditableStory(connection.storyId)
         val id = database.withTransaction {
             val savedId = if (connection.id == 0L) {
                 dao.insertConnection(connection.toEntity())
@@ -285,7 +288,7 @@ class StoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteConnection(connectionId: Long) {
         val owningStoryId = dao.getConnectionStoryId(connectionId) ?: return
-        requireOwnedStory(owningStoryId)
+        requireEditableStory(owningStoryId)
         val storyId = database.withTransaction {
             val id = dao.getConnectionStoryId(connectionId)
             dao.deleteConnection(connectionId)
@@ -295,34 +298,140 @@ class StoryRepositoryImpl @Inject constructor(
         storyId?.let { tryPushStory(it) }
     }
 
+    override suspend fun createShareLink(
+        storyId: Long,
+        role: StoryAccessRole
+    ): String {
+        require(role == StoryAccessRole.READER || role == StoryAccessRole.EDITOR) {
+            "Для ссылки можно выбрать только роль читателя или редактора"
+        }
+
+        var story = requireOwnerStory(storyId)
+        if (story.cloudId.isNullOrBlank() || story.isDirty) {
+            pushStory(storyId)
+            story = requireOwnerStory(storyId)
+        }
+
+        val cloudId = checkNotNull(story.cloudId) {
+            "История еще не синхронизирована с сервером"
+        }
+
+        return storyApi.createShareLink(
+            storyId = cloudId,
+            body = CreateShareLinkRequestDto(role = role.name.lowercase())
+        ).deepLink
+    }
+
+    override suspend fun acceptShareLink(token: String): Long {
+        val userId = checkNotNull(sessionStore.currentUser.value) {
+            "Чтобы открыть общую историю, необходимо войти в аккаунт"
+        }.id
+
+        val normalizedToken = token.trim()
+        require(normalizedToken.length >= 20) { "Некорректная ссылка доступа" }
+
+        val remote = storyApi.acceptShareLink(normalizedToken)
+        val existing = dao.getStoryByCloudId(remote.id, userId)
+
+        return if (existing == null) {
+            importRemoteStory(remote)
+        } else {
+            if (!existing.isDirty || remote.revision >= existing.cloudRevision) {
+                replaceFromRemote(existing.id, remote)
+            } else {
+                dao.updateAccessRole(existing.id, remoteAccessRole(remote).name)
+            }
+            existing.id
+        }
+    }
+
     override suspend fun syncAllStories() {
         val ownerUserId = sessionStore.currentUser.value?.id ?: return
         dao.claimLegacyStories(ownerUserId)
 
-        val localBefore = dao.getAllStories(ownerUserId)
-        localBefore.filter { it.pendingDelete }.forEach { story ->
-            story.cloudId?.let { cloudId ->
-                try {
-                    storyApi.deleteStory(cloudId)
-                } catch (error: HttpException) {
-                    if (error.code() != 404) throw error
-                }
-            }
-            dao.hardDeleteStory(story.id)
-        }
+        // Сначала получаем серверный список. Так изменение роли или отзыв доступа
+        // применяется до попытки отправить локальные изменения.
+        val remoteBeforePush = storyApi.listStories()
+        val remoteIdsBeforePush = remoteBeforePush.mapTo(mutableSetOf()) { it.id }
 
-        dao.getAllStories(ownerUserId)
-            .filter { !it.pendingDelete && (it.isDirty || it.cloudId == null) }
-            .forEach { pushStory(it.id) }
-
-        val remoteStories = storyApi.listStories()
-        val remoteIds = remoteStories.mapTo(mutableSetOf()) { it.id }
-
-        remoteStories.forEach { remote ->
+        remoteBeforePush.forEach { remote ->
             val local = dao.getStoryByCloudId(remote.id, ownerUserId)
             when {
                 local == null -> importRemoteStory(remote)
-                !local.isDirty && remote.revision > local.cloudRevision ->
+                else -> {
+                    val remoteRole = remoteAccessRole(remote).name
+                    if (local.accessRole != remoteRole &&
+                        remoteRole == StoryAccessRole.READER.name
+                    ) {
+                        // При понижении до читателя серверная версия становится
+                        // единственным источником данных, локальные несинхронизированные
+                        // правки больше не должны оставаться как редактируемая копия.
+                        replaceFromRemote(local.id, remote)
+                        return@forEach
+                    }
+
+                    if (local.accessRole != remoteRole) {
+                        dao.updateAccessRole(local.id, remoteRole)
+                    }
+
+                    val current = dao.getStory(local.id) ?: return@forEach
+                    if (!current.isDirty && remote.revision > current.cloudRevision) {
+                        replaceFromRemote(current.id, remote)
+                    }
+                }
+            }
+        }
+
+        // Если доступ к общей истории отозван, удаляем ее локальный кэш.
+        // Для собственных историй сохраняем прежнее поведение: грязная локальная
+        // версия может быть повторно создана на сервере.
+        dao.getAllStories(ownerUserId)
+            .filter { local ->
+                local.cloudId != null &&
+                        !local.pendingDelete &&
+                        local.cloudId !in remoteIdsBeforePush &&
+                        (local.accessRole != StoryAccessRole.OWNER.name || !local.isDirty)
+            }
+            .forEach { dao.hardDeleteStory(it.id) }
+
+        // Удалять историю на сервере может только владелец.
+        dao.getAllStories(ownerUserId)
+            .filter { it.pendingDelete }
+            .forEach { story ->
+                if (story.accessRole != StoryAccessRole.OWNER.name) {
+                    dao.hardDeleteStory(story.id)
+                    return@forEach
+                }
+
+                story.cloudId?.let { cloudId ->
+                    try {
+                        storyApi.deleteStory(cloudId)
+                    } catch (error: HttpException) {
+                        if (error.code() != 404) throw error
+                    }
+                }
+                dao.hardDeleteStory(story.id)
+            }
+
+        dao.getAllStories(ownerUserId)
+            .filter {
+                !it.pendingDelete &&
+                        it.accessRole != StoryAccessRole.READER.name &&
+                        (it.isDirty || it.cloudId == null)
+            }
+            .forEach { pushStory(it.id) }
+
+        // Повторное чтение подтягивает изменения других редакторов и новые revision.
+        val remoteAfterPush = storyApi.listStories()
+        val remoteIds = remoteAfterPush.mapTo(mutableSetOf()) { it.id }
+
+        remoteAfterPush.forEach { remote ->
+            val local = dao.getStoryByCloudId(remote.id, ownerUserId)
+            when {
+                local == null -> importRemoteStory(remote)
+                !local.isDirty &&
+                        (remote.revision > local.cloudRevision ||
+                                local.accessRole != remoteAccessRole(remote).name) ->
                     replaceFromRemote(local.id, remote)
             }
         }
@@ -330,9 +439,9 @@ class StoryRepositoryImpl @Inject constructor(
         dao.getAllStories(ownerUserId)
             .filter {
                 it.cloudId != null &&
-                    !it.isDirty &&
-                    !it.pendingDelete &&
-                    it.cloudId !in remoteIds
+                        !it.isDirty &&
+                        !it.pendingDelete &&
+                        it.cloudId !in remoteIds
             }
             .forEach { dao.hardDeleteStory(it.id) }
     }
@@ -351,7 +460,9 @@ class StoryRepositoryImpl @Inject constructor(
         val mutex = uploadLocks.getOrPut(storyId) { Mutex() }
         mutex.withLock {
             val story = dao.getStory(storyId) ?: return@withLock
-            if (story.pendingDelete) return@withLock
+            if (story.pendingDelete || story.accessRole == StoryAccessRole.READER.name) {
+                return@withLock
+            }
 
             val snapshotUpdatedAt = story.updatedAt
             val request = StoryUpsertRequestDto(
@@ -364,7 +475,9 @@ class StoryRepositoryImpl @Inject constructor(
                 try {
                     storyApi.updateStory(story.cloudId, request)
                 } catch (error: HttpException) {
-                    if (error.code() == 404) {
+                    if (error.code() == 404 &&
+                        story.accessRole == StoryAccessRole.OWNER.name
+                    ) {
                         storyApi.createStory(request.copy(baseRevision = null))
                     } else {
                         throw error
@@ -432,9 +545,9 @@ class StoryRepositoryImpl @Inject constructor(
         )
     }
 
-    private suspend fun importRemoteStory(remote: StoryResponseDto) {
+    private suspend fun importRemoteStory(remote: StoryResponseDto): Long {
         val ownerUserId = checkNotNull(sessionStore.currentUser.value).id
-        database.withTransaction {
+        return database.withTransaction {
             val p = remote.payload
             val storyId = dao.insertStory(
                 StoryEntity(
@@ -447,11 +560,13 @@ class StoryRepositoryImpl @Inject constructor(
                     cloudRevision = remote.revision,
                     isDirty = false,
                     pendingDelete = false,
+                    accessRole = remoteAccessRole(remote).name,
                     createdAt = p.createdAt,
                     updatedAt = p.updatedAt
                 )
             )
             insertRemoteChildren(storyId, remote)
+            storyId
         }
     }
 
@@ -468,6 +583,7 @@ class StoryRepositoryImpl @Inject constructor(
                 manuscript = p.manuscript,
                 wordDocument = p.wordDocument,
                 revision = remote.revision,
+                accessRole = remoteAccessRole(remote).name,
                 createdAt = p.createdAt,
                 updatedAt = p.updatedAt
             )
@@ -522,7 +638,7 @@ class StoryRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun requireOwnedStory(storyId: Long): StoryEntity {
+    private suspend fun requireAccessibleStory(storyId: Long): StoryEntity {
         val ownerUserId = checkNotNull(sessionStore.currentUser.value) {
             "Необходимо войти в аккаунт"
         }.id
@@ -531,6 +647,29 @@ class StoryRepositoryImpl @Inject constructor(
             ?.takeIf { it.ownerUserId == ownerUserId && !it.pendingDelete }
             ?: throw SecurityException("История недоступна текущему пользователю")
     }
+
+    private suspend fun requireEditableStory(storyId: Long): StoryEntity {
+        val story = requireAccessibleStory(storyId)
+        if (story.accessRole == StoryAccessRole.READER.name) {
+            throw SecurityException("История открыта только для чтения")
+        }
+        return story
+    }
+
+    private suspend fun requireOwnerStory(storyId: Long): StoryEntity {
+        val story = requireAccessibleStory(storyId)
+        if (story.accessRole != StoryAccessRole.OWNER.name) {
+            throw SecurityException("Только владелец истории может выполнить это действие")
+        }
+        return story
+    }
+
+    private fun remoteAccessRole(remote: StoryResponseDto): StoryAccessRole =
+        when (remote.accessRole.lowercase()) {
+            "reader" -> StoryAccessRole.READER
+            "editor" -> StoryAccessRole.EDITOR
+            else -> StoryAccessRole.OWNER
+        }
 
     private fun formattingJson(marks: List<TextFormatMarkDto>): String {
         val array = JSONArray()

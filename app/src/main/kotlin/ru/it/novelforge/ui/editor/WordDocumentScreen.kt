@@ -61,6 +61,7 @@ fun WordDocumentScreen(
 ) {
     val graph by viewModel.graph.collectAsStateWithLifecycle()
     val story = graph?.story
+    val canEdit = story?.accessRole?.canEdit == true
 
     var text by remember { mutableStateOf("") }
     var savedText by remember { mutableStateOf("") }
@@ -89,6 +90,7 @@ fun WordDocumentScreen(
             loadedStoryId = currentStory.id
 
             if (
+                canEdit &&
                 currentStory.wordDocument.isBlank() &&
                 initialText.isNotBlank()
             ) {
@@ -113,8 +115,8 @@ fun WordDocumentScreen(
         }
     }
 
-    LaunchedEffect(text, loadedStoryId) {
-        if (loadedStoryId == null || text == savedText) {
+    LaunchedEffect(text, loadedStoryId, canEdit) {
+        if (!canEdit || loadedStoryId == null || text == savedText) {
             return@LaunchedEffect
         }
 
@@ -186,7 +188,9 @@ fun WordDocumentScreen(
                         Text("Word-документ")
                         Text(
                             text =
-                                if (text == savedText) {
+                                if (!canEdit) {
+                                    "Только чтение"
+                                } else if (text == savedText) {
                                     "Сохранено автоматически"
                                 } else {
                                     "Сохранение…"
@@ -213,7 +217,7 @@ fun WordDocumentScreen(
                         onClick = {
                             showRegenerateDialog = true
                         },
-                        enabled = graph != null
+                        enabled = graph != null && canEdit
                     ) {
                         Icon(
                             Icons.Default.Refresh,
@@ -224,7 +228,7 @@ fun WordDocumentScreen(
 
                     IconButton(
                         onClick = {
-                            if (text != savedText) {
+                            if (canEdit && text != savedText) {
                                 viewModel.updateWordDocument(text)
                                 savedText = text
                             }
@@ -260,7 +264,7 @@ fun WordDocumentScreen(
             Text(
                 text =
                     "Это текст будущего DOCX. Его можно свободно " +
-                        "дописывать и исправлять перед скачиванием.",
+                            "дописывать и исправлять перед скачиванием.",
                 style =
                     MaterialTheme.typography.bodySmall,
                 color =
@@ -300,7 +304,7 @@ fun WordDocumentScreen(
                     onClick = {
                         showRegenerateDialog = true
                     },
-                    enabled = graph != null,
+                    enabled = graph != null && canEdit,
                     modifier =
                         Modifier.weight(1f)
                 ) {
@@ -317,7 +321,7 @@ fun WordDocumentScreen(
 
                 Button(
                     onClick = {
-                        if (text != savedText) {
+                        if (canEdit && text != savedText) {
                             viewModel.updateWordDocument(text)
                             savedText = text
                         }
@@ -354,9 +358,10 @@ fun WordDocumentScreen(
                 placeholder = {
                     Text(
                         "Здесь можно отредактировать текст, " +
-                            "который попадёт в Word-документ…"
+                                "который попадёт в Word-документ…"
                     )
                 },
+                readOnly = !canEdit,
                 textStyle =
                     MaterialTheme.typography.bodyLarge,
                 colors =
@@ -378,7 +383,7 @@ fun WordDocumentScreen(
         }
     }
 
-    if (showRegenerateDialog) {
+    if (showRegenerateDialog && canEdit) {
         AlertDialog(
             onDismissRequest = {
                 showRegenerateDialog = false
@@ -389,8 +394,8 @@ fun WordDocumentScreen(
             text = {
                 Text(
                     "Текущий текст Word-документа будет заменён " +
-                        "актуальным экспортом из схемы истории. " +
-                        "Ручные правки в этой вкладке будут удалены."
+                            "актуальным экспортом из схемы истории. " +
+                            "Ручные правки в этой вкладке будут удалены."
                 )
             },
             confirmButton = {

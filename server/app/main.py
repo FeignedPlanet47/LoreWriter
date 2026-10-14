@@ -8,7 +8,7 @@ is_development = settings.environment.lower() == "development"
 
 app = FastAPI(
     title="NovelForge API",
-    version="1.1.0",
+    version="1.2.0",
     docs_url="/docs" if is_development else None,
     openapi_url="/openapi.json" if is_development else None,
     redoc_url=None,

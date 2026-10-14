@@ -1,5 +1,6 @@
 package ru.it.novelforge.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,8 @@ private object Routes {
 
 @Composable
 fun NovelForgeApp(
+    deepLink: String? = null,
+    onDeepLinkConsumed: () -> Unit = {},
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.state.collectAsStateWithLifecycle()
@@ -68,6 +71,8 @@ fun NovelForgeApp(
         else -> {
             AuthenticatedNovelForgeApp(
                 user = checkNotNull(authState.user),
+                pendingShareToken = extractShareToken(deepLink),
+                onShareTokenConsumed = onDeepLinkConsumed,
                 onLogout = authViewModel::logout
             )
         }
@@ -77,6 +82,8 @@ fun NovelForgeApp(
 @Composable
 private fun AuthenticatedNovelForgeApp(
     user: UserAccount,
+    pendingShareToken: String?,
+    onShareTokenConsumed: () -> Unit,
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -89,6 +96,8 @@ private fun AuthenticatedNovelForgeApp(
             StoriesScreen(
                 user = user,
                 onLogout = onLogout,
+                pendingShareToken = pendingShareToken,
+                onShareTokenConsumed = onShareTokenConsumed,
                 onOpenStory = {
                     navController.navigate(Routes.editor(it))
                 }
@@ -124,4 +133,17 @@ private fun AuthenticatedNovelForgeApp(
             )
         }
     }
+}
+
+private fun extractShareToken(deepLink: String?): String? {
+    if (deepLink.isNullOrBlank()) return null
+
+    return runCatching {
+        val uri = Uri.parse(deepLink)
+        if (uri.scheme != "novelforge" || uri.host != "share") {
+            null
+        } else {
+            uri.pathSegments.firstOrNull()?.takeIf { it.length >= 20 }
+        }
+    }.getOrNull()
 }

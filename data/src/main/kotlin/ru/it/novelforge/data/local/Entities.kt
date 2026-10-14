@@ -9,7 +9,7 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "stories",
     indices = [
-        Index(value = ["cloudId"], unique = true),
+        Index(value = ["cloudId", "ownerUserId"], unique = true),
         Index(value = ["ownerUserId"])
     ]
 )
@@ -24,6 +24,7 @@ data class StoryEntity(
     @ColumnInfo(defaultValue = "0") val cloudRevision: Long = 0,
     @ColumnInfo(defaultValue = "1") val isDirty: Boolean = true,
     @ColumnInfo(defaultValue = "0") val pendingDelete: Boolean = false,
+    @ColumnInfo(defaultValue = "'OWNER'") val accessRole: String = "OWNER",
     val createdAt: Long,
     val updatedAt: Long
 )

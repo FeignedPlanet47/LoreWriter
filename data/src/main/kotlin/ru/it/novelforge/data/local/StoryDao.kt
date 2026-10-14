@@ -73,7 +73,7 @@ interface StoryDao {
         expectedUpdatedAt: Long
     )
 
-    @Query("UPDATE stories SET title = :title, description = :description, manuscript = :manuscript, wordDocument = :wordDocument, cloudRevision = :revision, isDirty = 0, pendingDelete = 0, createdAt = :createdAt, updatedAt = :updatedAt WHERE id = :storyId")
+    @Query("UPDATE stories SET title = :title, description = :description, manuscript = :manuscript, wordDocument = :wordDocument, cloudRevision = :revision, accessRole = :accessRole, isDirty = 0, pendingDelete = 0, createdAt = :createdAt, updatedAt = :updatedAt WHERE id = :storyId")
     suspend fun updateStoryFromCloud(
         storyId: Long,
         title: String,
@@ -81,9 +81,13 @@ interface StoryDao {
         manuscript: String,
         wordDocument: String,
         revision: Long,
+        accessRole: String,
         createdAt: Long,
         updatedAt: Long
     )
+
+    @Query("UPDATE stories SET accessRole = :accessRole WHERE id = :storyId")
+    suspend fun updateAccessRole(storyId: Long, accessRole: String)
 
     @Query("DELETE FROM story_connections WHERE storyId = :storyId")
     suspend fun deleteConnectionsForStory(storyId: Long)

@@ -1,7 +1,12 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+
+
+StoryAccessRole = Literal["owner", "editor", "reader"]
+ShareLinkRole = Literal["editor", "reader"]
 
 
 class UserOut(BaseModel):
@@ -109,3 +114,22 @@ class StoryResponse(BaseModel):
     revision: int
     payload: StoryPayload
     updatedAt: datetime
+    accessRole: StoryAccessRole
+
+
+class CreateShareLinkRequest(BaseModel):
+    role: ShareLinkRole
+
+
+class ShareLinkResponse(BaseModel):
+    id: UUID
+    role: ShareLinkRole
+    deepLink: str
+    createdAt: datetime
+
+
+class CollaboratorResponse(BaseModel):
+    userId: UUID
+    email: EmailStr
+    displayName: str
+    role: ShareLinkRole

@@ -1,6 +1,6 @@
 from urllib.parse import quote_plus
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     smtp_timeout_seconds: int = Field(default=15, ge=5, le=60)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def validate_smtp(self):
+        if self.smtp_use_tls and self.smtp_use_ssl:
+            raise ValueError("SMTP_USE_TLS and SMTP_USE_SSL cannot both be true")
+        if self.smtp_username and not self.smtp_password:
+            raise ValueError("SMTP_PASSWORD is required when SMTP_USERNAME is set")
+        return self
 
     @property
     def database_url(self) -> str:

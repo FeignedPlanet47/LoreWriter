@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ru.it.novelforge.domain.model.StoryAccessRole
 import ru.it.novelforge.domain.usecase.StoryUseCases
 
 @HiltViewModel
@@ -23,6 +24,9 @@ class StoriesViewModel @Inject constructor(
 
     private val _openedStory = Channel<Long>(Channel.BUFFERED)
     val openedStory = _openedStory.receiveAsFlow()
+
+    private val _shareEvents = Channel<ShareEvent>(Channel.BUFFERED)
+    val shareEvents = _shareEvents.receiveAsFlow()
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
@@ -36,7 +40,44 @@ class StoriesViewModel @Inject constructor(
 
     fun deleteStory(storyId: Long) {
         viewModelScope.launch {
-            useCases.deleteStory(storyId)
+            try {
+                useCases.deleteStory(storyId)
+            } catch (error: Throwable) {
+                _shareEvents.send(
+                    ShareEvent.Error(error.message.ifBlankFallback("Не удалось удалить историю"))
+                )
+            }
+        }
+    }
+
+    fun createShareLink(storyId: Long, role: StoryAccessRole) {
+        viewModelScope.launch {
+            try {
+                val link = useCases.createShareLink(storyId, role)
+                _shareEvents.send(ShareEvent.LinkReady(link, role))
+            } catch (error: Throwable) {
+                _shareEvents.send(
+                    ShareEvent.Error(error.message.ifBlankFallback("Не удалось создать ссылку"))
+                )
+            }
+        }
+    }
+
+    fun acceptShareLink(token: String) {
+        viewModelScope.launch {
+            try {
+                val storyId = useCases.acceptShareLink(token)
+                _shareEvents.send(ShareEvent.AccessGranted)
+                _openedStory.send(storyId)
+            } catch (error: Throwable) {
+                _shareEvents.send(
+                    ShareEvent.Error(
+                        error.message.ifBlankFallback(
+                            "Ссылка недействительна или доступ был отозван"
+                        )
+                    )
+                )
+            }
         }
     }
 
@@ -53,7 +94,7 @@ class StoriesViewModel @Inject constructor(
                     _syncState.value = SyncState.Error(
                         if (message.contains("409")) {
                             "История была изменена на другом устройстве. " +
-                                "Локальная версия не перезаписана. Синхронизация остановлена."
+                                    "Локальная версия не перезаписана. Синхронизация остановлена."
                         } else {
                             message.ifBlank { "Ошибка синхронизации" }
                         }
@@ -65,6 +106,19 @@ class StoriesViewModel @Inject constructor(
     fun resetSyncMessage() {
         _syncState.value = SyncState.Idle
     }
+}
+
+private fun String?.ifBlankFallback(fallback: String): String =
+    this?.takeIf { it.isNotBlank() } ?: fallback
+
+sealed interface ShareEvent {
+    data class LinkReady(
+        val link: String,
+        val role: StoryAccessRole
+    ) : ShareEvent
+
+    data object AccessGranted : ShareEvent
+    data class Error(val message: String) : ShareEvent
 }
 
 sealed interface SyncState {

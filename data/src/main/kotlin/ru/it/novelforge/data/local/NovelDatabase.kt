@@ -11,7 +11,7 @@ import androidx.room.migration.Migration
         StoryNodeEntity::class,
         StoryConnectionEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class NovelDatabase : RoomDatabase() {
@@ -66,6 +66,18 @@ abstract class NovelDatabase : RoomDatabase() {
             database.execSQL("ALTER TABLE stories ADD COLUMN pendingDelete INTEGER NOT NULL DEFAULT 0")
             database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_stories_cloudId ON stories(cloudId)")
             database.execSQL("CREATE INDEX IF NOT EXISTS index_stories_ownerUserId ON stories(ownerUserId)")
+        }
+
+
+        val MIGRATION_5_6 = Migration(5, 6) { database ->
+            database.execSQL(
+                "ALTER TABLE stories ADD COLUMN accessRole TEXT NOT NULL DEFAULT 'OWNER'"
+            )
+            database.execSQL("DROP INDEX IF EXISTS index_stories_cloudId")
+            database.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_stories_cloudId_ownerUserId " +
+                        "ON stories(cloudId, ownerUserId)"
+            )
         }
     }
 }

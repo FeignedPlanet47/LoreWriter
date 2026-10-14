@@ -7,6 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import ru.it.novelforge.domain.repository.StoryRepository
 import ru.it.novelforge.domain.usecase.CreateStoryUseCase
+import ru.it.novelforge.domain.usecase.AcceptStoryShareLinkUseCase
+import ru.it.novelforge.domain.usecase.CreateStoryShareLinkUseCase
 import ru.it.novelforge.domain.usecase.DeleteCharacterUseCase
 import ru.it.novelforge.domain.usecase.ObserveCharactersUseCase
 import ru.it.novelforge.domain.usecase.UpdateManuscriptUseCase
@@ -48,6 +50,8 @@ object UseCaseModule {
         updateNodePosition = UpdateNodePositionUseCase(repository),
         upsertConnection = UpsertConnectionUseCase(repository),
         deleteConnection = DeleteConnectionUseCase(repository),
+        createShareLink = CreateStoryShareLinkUseCase(repository),
+        acceptShareLink = AcceptStoryShareLinkUseCase(repository),
         syncStories = SyncStoriesUseCase(repository),
         validateStory = ValidateStoryUseCase(),
         exportText = ExportStoryTextUseCase(),

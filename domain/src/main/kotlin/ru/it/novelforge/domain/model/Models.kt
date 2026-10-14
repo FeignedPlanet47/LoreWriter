@@ -14,6 +14,19 @@ data class TextFormatMark(
     val value: String? = null
 )
 
+
+enum class StoryAccessRole {
+    OWNER,
+    EDITOR,
+    READER;
+
+    val canEdit: Boolean
+        get() = this != READER
+
+    val canShare: Boolean
+        get() = this == OWNER
+}
+
 enum class NodeType {
     START,
     SCENE,
@@ -38,6 +51,7 @@ data class Story(
     val cloudRevision: Long = 0,
     val isDirty: Boolean = true,
     val pendingDelete: Boolean = false,
+    val accessRole: StoryAccessRole = StoryAccessRole.OWNER,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

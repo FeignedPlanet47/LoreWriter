@@ -46,6 +46,7 @@ class EditorViewModel @Inject constructor(
             )
 
     fun updateManuscript(text: String) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.updateManuscript(
                 storyId = storyId,
@@ -55,6 +56,7 @@ class EditorViewModel @Inject constructor(
     }
 
     fun updateWordDocument(text: String) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.updateWordDocument(
                 storyId = storyId,
@@ -67,6 +69,7 @@ class EditorViewModel @Inject constructor(
         exportText()
 
     fun saveCharacter(character: CharacterProfile) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.upsertCharacter(
                 character.copy(
@@ -104,12 +107,14 @@ class EditorViewModel @Inject constructor(
     }
 
     fun deleteCharacter(characterId: Long) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.deleteCharacter(characterId)
         }
     }
 
     fun saveNode(node: StoryNode) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             if (node.type == NodeType.MODE_DIVIDER) {
                 val currentGraph = graph.value
@@ -145,6 +150,7 @@ class EditorViewModel @Inject constructor(
         x: Float,
         y: Float
     ) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.upsertNode(
                 StoryNode(
@@ -176,6 +182,7 @@ class EditorViewModel @Inject constructor(
     }
 
     fun deleteNode(node: StoryNode) {
+        if (!canEditCurrentStory()) return
         if (node.type == NodeType.START) {
             return
         }
@@ -190,6 +197,7 @@ class EditorViewModel @Inject constructor(
         x: Float,
         y: Float
     ) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.updateNodePosition(
                 nodeId,
@@ -204,6 +212,7 @@ class EditorViewModel @Inject constructor(
         toNodeId: Long,
         label: String
     ) {
+        if (!canEditCurrentStory()) return
         val currentGraph = graph.value ?: return
         val fromNode = currentGraph.nodeById(fromNodeId)
         val toNode = currentGraph.nodeById(toNodeId)
@@ -234,10 +243,14 @@ class EditorViewModel @Inject constructor(
     }
 
     fun deleteConnection(connectionId: Long) {
+        if (!canEditCurrentStory()) return
         viewModelScope.launch {
             useCases.deleteConnection(connectionId)
         }
     }
+
+    private fun canEditCurrentStory(): Boolean =
+        graph.value?.story?.accessRole?.canEdit == true
 
     fun validate(): List<ValidationIssue> =
         graph.value

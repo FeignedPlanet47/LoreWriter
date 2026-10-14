@@ -11,14 +11,6 @@ services:
       retries: 20
     restart: unless-stopped
 
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "8025:8025"
-    expose:
-      - "1025"
-    restart: unless-stopped
-
   api:
     build: .
     env_file: .env
@@ -27,8 +19,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     restart: unless-stopped
 
 volumes:

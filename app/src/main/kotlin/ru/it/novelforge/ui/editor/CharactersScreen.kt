@@ -52,6 +52,8 @@ fun CharactersScreen(
     viewModel: EditorViewModel
 ) {
     val characters by viewModel.characters.collectAsStateWithLifecycle()
+    val graph by viewModel.graph.collectAsStateWithLifecycle()
+    val canEdit = graph?.story?.accessRole?.canEdit == true
     var editingCharacter by remember { mutableStateOf<CharacterProfile?>(null) }
     var showNewCharacter by remember { mutableStateOf(false) }
 
@@ -62,7 +64,8 @@ fun CharactersScreen(
                     Column {
                         Text("Персонажи")
                         Text(
-                            text = "${characters.size} персонажей",
+                            text = "${characters.size} персонажей" +
+                                    if (canEdit) "" else " · Только чтение",
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -75,8 +78,10 @@ fun CharactersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewCharacter = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить персонажа")
+            if (canEdit) {
+                FloatingActionButton(onClick = { showNewCharacter = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить персонажа")
+                }
             }
         }
     ) { padding ->
@@ -121,7 +126,7 @@ fun CharactersScreen(
                 ) { character ->
                     CharacterCard(
                         character = character,
-                        onClick = { editingCharacter = character }
+                        onClick = { if (canEdit) editingCharacter = character }
                     )
                 }
             }

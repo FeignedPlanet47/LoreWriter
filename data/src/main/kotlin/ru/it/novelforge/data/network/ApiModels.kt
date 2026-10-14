@@ -104,5 +104,17 @@ data class StoryResponseDto(
     val id: String,
     val revision: Long,
     val payload: StoryPayloadDto,
-    val updatedAt: String
+    val updatedAt: String,
+    val accessRole: String = "owner"
+)
+
+data class CreateShareLinkRequestDto(
+    val role: String
+)
+
+data class ShareLinkResponseDto(
+    val id: String,
+    val role: String,
+    val deepLink: String,
+    val createdAt: String
 )

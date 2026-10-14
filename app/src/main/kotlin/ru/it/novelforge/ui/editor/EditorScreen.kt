@@ -130,6 +130,7 @@ fun EditorScreen(
 ) {
 
     val graph by viewModel.graph.collectAsStateWithLifecycle()
+    val canEdit = graph?.story?.accessRole?.canEdit == true
 
     var editingNode by remember {
         mutableStateOf<StoryNode?>(null)
@@ -253,7 +254,8 @@ fun EditorScreen(
 
                         Text(
                             "${graph?.nodes?.size ?: 0} узлов · " +
-                                    "${graph?.connections?.size ?: 0} переходов",
+                                    "${graph?.connections?.size ?: 0} переходов" +
+                                    if (canEdit) "" else " · Только чтение",
                             style =
                                 MaterialTheme
                                     .typography
@@ -360,20 +362,17 @@ fun EditorScreen(
         },
 
         floatingActionButton = {
-
-            FloatingActionButton(
-
-                onClick = {
-                    showNewNode = true
+            if (canEdit) {
+                FloatingActionButton(
+                    onClick = {
+                        showNewNode = true
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Добавить узел"
+                    )
                 }
-
-            ) {
-
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription =
-                        "Добавить узел"
-                )
             }
         }
 
@@ -410,12 +409,12 @@ fun EditorScreen(
                         .fillMaxSize()
                         .padding(padding),
 
-                onNodeClick = {
-                    editingNode = it
+                onNodeClick = { node ->
+                    if (canEdit) editingNode = node
                 },
 
                 onMoveNode =
-                    viewModel::moveNode
+                    if (canEdit) viewModel::moveNode else { _, _, _ -> }
             )
         }
     }
@@ -1628,181 +1627,181 @@ private fun NodeEditorDialog(
 
                     RichTextFormattingToolbar(
 
-                    selectionStart =
-                        textValue
-                            .selection
-                            .min,
+                        selectionStart =
+                            textValue
+                                .selection
+                                .min,
 
-                    selectionEnd =
-                        textValue
-                            .selection
-                            .max,
-
-                    formatting =
-                        formatting,
-
-                    customColor =
-                        customColor,
-
-                    onCustomColorChange = {
-                        customColor = it
-                    },
-
-                    onToggle = { markType ->
+                        selectionEnd =
+                            textValue
+                                .selection
+                                .max,
 
                         formatting =
-                            toggleTextMark(
+                            formatting,
 
-                                marks =
-                                    formatting,
+                        customColor =
+                            customColor,
 
-                                start =
-                                    textValue
-                                        .selection
-                                        .min,
+                        onCustomColorChange = {
+                            customColor = it
+                        },
 
-                                end =
-                                    textValue
-                                        .selection
-                                        .max,
+                        onToggle = { markType ->
 
-                                type =
-                                    markType
+                            formatting =
+                                toggleTextMark(
+
+                                    marks =
+                                        formatting,
+
+                                    start =
+                                        textValue
+                                            .selection
+                                            .min,
+
+                                    end =
+                                        textValue
+                                            .selection
+                                            .max,
+
+                                    type =
+                                        markType
+                                )
+                        },
+
+                        onColor = { colorHex ->
+
+                            formatting =
+                                applyTextColor(
+
+                                    marks =
+                                        formatting,
+
+                                    start =
+                                        textValue
+                                            .selection
+                                            .min,
+
+                                    end =
+                                        textValue
+                                            .selection
+                                            .max,
+
+                                    colorHex =
+                                        colorHex
+                                )
+                        },
+
+                        onClear = {
+
+                            formatting =
+                                clearTextFormatting(
+
+                                    marks =
+                                        formatting,
+
+                                    start =
+                                        textValue
+                                            .selection
+                                            .min,
+
+                                    end =
+                                        textValue
+                                            .selection
+                                            .max
+                                )
+                        }
+                    )
+
+                    OutlinedTextField(
+
+                        value =
+                            styledTextValue,
+
+                        onValueChange = { updated ->
+
+                            formatting =
+                                adjustMarksAfterTextChange(
+
+                                    oldText =
+                                        textValue.text,
+
+                                    newText =
+                                        updated.text,
+
+                                    marks =
+                                        formatting
+                                )
+
+                            textValue =
+                                TextFieldValue(
+
+                                    text =
+                                        updated.text,
+
+                                    selection =
+                                        updated.selection,
+
+                                    composition =
+                                        updated.composition
+                                )
+                        },
+
+                        label = {
+
+                            Text(
+                                "Текст сцены, реплика или описание действия"
                             )
-                    },
+                        },
 
-                    onColor = { colorHex ->
+                        minLines =
+                            5,
 
-                        formatting =
-                            applyTextColor(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
 
-                                marks =
-                                    formatting,
-
-                                start =
-                                    textValue
-                                        .selection
-                                        .min,
-
-                                end =
-                                    textValue
-                                        .selection
-                                        .max,
-
-                                colorHex =
-                                    colorHex
+                    when {
+                        !spellCheckState.isAvailable ->
+                            Text(
+                                text = "Системная проверка орфографии выключена",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                    },
 
-                    onClear = {
+                        spellCheckState.isChecking ->
+                            Text(
+                                text = "Проверка орфографии…",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
-                        formatting =
-                            clearTextFormatting(
-
-                                marks =
-                                    formatting,
-
-                                start =
-                                    textValue
-                                        .selection
-                                        .min,
-
-                                end =
-                                    textValue
-                                        .selection
-                                        .max
+                        spellCheckState.issues.isNotEmpty() ->
+                            Text(
+                                text = "Возможных ошибок: ${spellCheckState.issues.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
                             )
                     }
-                )
 
-                OutlinedTextField(
+                    OutlinedButton(
 
-                    value =
-                        styledTextValue,
+                        onClick = {
 
-                    onValueChange = { updated ->
+                            showFullScreenEditor =
+                                true
+                        },
 
-                        formatting =
-                            adjustMarksAfterTextChange(
+                        modifier =
+                            Modifier.fillMaxWidth()
 
-                                oldText =
-                                    textValue.text,
-
-                                newText =
-                                    updated.text,
-
-                                marks =
-                                    formatting
-                            )
-
-                        textValue =
-                            TextFieldValue(
-
-                                text =
-                                    updated.text,
-
-                                selection =
-                                    updated.selection,
-
-                                composition =
-                                    updated.composition
-                            )
-                    },
-
-                    label = {
+                    ) {
 
                         Text(
-                            "Текст сцены, реплика или описание действия"
+                            "Открыть редактор на весь экран"
                         )
-                    },
-
-                    minLines =
-                        5,
-
-                    modifier =
-                        Modifier.fillMaxWidth()
-                )
-
-                when {
-                    !spellCheckState.isAvailable ->
-                        Text(
-                            text = "Системная проверка орфографии выключена",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                    spellCheckState.isChecking ->
-                        Text(
-                            text = "Проверка орфографии…",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                    spellCheckState.issues.isNotEmpty() ->
-                        Text(
-                            text = "Возможных ошибок: ${spellCheckState.issues.size}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                }
-
-                OutlinedButton(
-
-                    onClick = {
-
-                        showFullScreenEditor =
-                            true
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth()
-
-                ) {
-
-                    Text(
-                        "Открыть редактор на весь экран"
-                    )
-                }
+                    }
 
                 } else {
 

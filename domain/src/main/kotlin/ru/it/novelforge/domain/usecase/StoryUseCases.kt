@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import ru.it.novelforge.domain.model.CharacterProfile
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.Story
+import ru.it.novelforge.domain.model.StoryAccessRole
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
@@ -124,6 +125,20 @@ class DeleteConnectionUseCase(
 ) {
     suspend operator fun invoke(connectionId: Long) =
         repository.deleteConnection(connectionId)
+}
+
+class CreateStoryShareLinkUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(storyId: Long, role: StoryAccessRole): String =
+        repository.createShareLink(storyId, role)
+}
+
+class AcceptStoryShareLinkUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(token: String): Long =
+        repository.acceptShareLink(token)
 }
 
 class SyncStoriesUseCase(
@@ -701,6 +716,8 @@ data class StoryUseCases(
     val updateNodePosition: UpdateNodePositionUseCase,
     val upsertConnection: UpsertConnectionUseCase,
     val deleteConnection: DeleteConnectionUseCase,
+    val createShareLink: CreateStoryShareLinkUseCase,
+    val acceptShareLink: AcceptStoryShareLinkUseCase,
     val syncStories: SyncStoriesUseCase,
     val validateStory: ValidateStoryUseCase,
     val exportText: ExportStoryTextUseCase,

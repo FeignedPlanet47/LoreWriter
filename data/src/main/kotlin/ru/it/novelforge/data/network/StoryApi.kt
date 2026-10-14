@@ -22,4 +22,15 @@ interface StoryApi {
 
     @DELETE("stories/{storyId}")
     suspend fun deleteStory(@Path("storyId") storyId: String)
+
+    @POST("stories/{storyId}/share-links")
+    suspend fun createShareLink(
+        @Path("storyId") storyId: String,
+        @Body body: CreateShareLinkRequestDto
+    ): ShareLinkResponseDto
+
+    @POST("share-links/{token}/accept")
+    suspend fun acceptShareLink(
+        @Path("token") token: String
+    ): StoryResponseDto
 }
