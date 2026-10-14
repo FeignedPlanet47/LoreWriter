@@ -54,6 +54,18 @@ class EditorViewModel @Inject constructor(
         }
     }
 
+    fun updateWordDocument(text: String) {
+        viewModelScope.launch {
+            useCases.updateWordDocument(
+                storyId = storyId,
+                wordDocument = text
+            )
+        }
+    }
+
+    fun buildWordDocumentFromStory(): String =
+        exportText()
+
     fun saveCharacter(character: CharacterProfile) {
         viewModelScope.launch {
             useCases.upsertCharacter(

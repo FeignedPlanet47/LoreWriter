@@ -1,0 +1,32 @@
+Проверки, выполненные при подготовке комплекта
+
+1. Python syntax:
+   python -m compileall server/app server/alembic
+   Результат: OK
+
+2. Alembic SQL generation:
+   alembic upgrade head --sql
+   Результат: OK, начальная PostgreSQL-схема генерируется.
+
+3. Pydantic config/schema smoke test:
+   Settings и StoryPayload/StoryUpsertRequest создаются.
+   Результат: OK
+
+4. Pure Kotlin domain module:
+   kotlinc + kotlinx-coroutines-core-jvm
+   Результат: OK
+
+5. Android manifests XML parse:
+   app/src/main/AndroidManifest.xml
+   app/src/debug/AndroidManifest.xml
+   Результат: OK
+
+6. Полная Android Gradle compilation:
+   ./gradlew :app:compileDebugKotlin
+   Результат: НЕ ВЫПОЛНЕНА ДО КОМПИЛЯЦИИ ИСХОДНИКОВ.
+   Причина: в среде отсутствует Gradle 8.13 в локальном кэше, а wrapper не может
+   скачать https://services.gradle.org/distributions/gradle-8.13-bin.zip из-за
+   сетевого UnknownHostException.
+
+После открытия проекта в Android Studio с интернетом выполнить:
+   ./gradlew :app:assembleDebug

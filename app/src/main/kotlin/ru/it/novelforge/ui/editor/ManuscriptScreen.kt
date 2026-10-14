@@ -24,13 +24,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import ru.it.novelforge.ui.common.buildRichAnnotatedString
+import ru.it.novelforge.ui.common.rememberSpellCheckState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,16 +68,36 @@ fun ManuscriptScreen(
         return
     }
 
-    var text by rememberSaveable(story.id) {
-        mutableStateOf(story.manuscript)
+    var textValue by remember(story.id) {
+        mutableStateOf(
+            TextFieldValue(
+                text = story.manuscript
+            )
+        )
     }
 
     var savedText by remember(story.id) {
         mutableStateOf(story.manuscript)
     }
 
+    val text = textValue.text
     val latestText by rememberUpdatedState(text)
     val latestSavedText by rememberUpdatedState(savedText)
+
+    val spellCheckState = rememberSpellCheckState(
+        text = text,
+        enabled = true
+    )
+
+    val styledTextValue = TextFieldValue(
+        annotatedString = buildRichAnnotatedString(
+            text = text,
+            marks = emptyList(),
+            spellingIssues = spellCheckState.issues
+        ),
+        selection = textValue.selection,
+        composition = textValue.composition
+    )
 
     DisposableEffect(story.id) {
         onDispose {
@@ -147,9 +169,41 @@ fun ManuscriptScreen(
                 )
             }
 
+            when {
+                !spellCheckState.isAvailable -> {
+                    Text(
+                        text = "Проверка орфографии недоступна. Включите системную проверку текста в настройках Android.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                spellCheckState.isChecking -> {
+                    Text(
+                        text = "Проверка орфографии…",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                spellCheckState.issues.isNotEmpty() -> {
+                    Text(
+                        text = "Возможных ошибок: ${spellCheckState.issues.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
             TextField(
-                value = text,
-                onValueChange = { text = it },
+                value = styledTextValue,
+                onValueChange = { updated ->
+                    textValue = TextFieldValue(
+                        text = updated.text,
+                        selection = updated.selection,
+                        composition = updated.composition
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),

@@ -32,6 +32,12 @@ data class Story(
     val title: String,
     val description: String = "",
     val manuscript: String = "",
+    val wordDocument: String = "",
+    val ownerUserId: String = "",
+    val cloudId: String? = null,
+    val cloudRevision: Long = 0,
+    val isDirty: Boolean = true,
+    val pendingDelete: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

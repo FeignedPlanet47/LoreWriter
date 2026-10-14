@@ -1,0 +1,73 @@
+Файлы, добавленные/измененные для аккаунтов и серверной синхронизации
+
+ANDROID / DOMAIN
+- domain/src/main/kotlin/ru/it/novelforge/domain/model/AuthModels.kt
+- domain/src/main/kotlin/ru/it/novelforge/domain/model/Models.kt
+- domain/src/main/kotlin/ru/it/novelforge/domain/repository/AuthRepository.kt
+- domain/src/main/kotlin/ru/it/novelforge/domain/repository/StoryRepository.kt
+- domain/src/main/kotlin/ru/it/novelforge/domain/usecase/StoryUseCases.kt
+
+ANDROID / DATA
+- data/build.gradle.kts
+- data/src/main/kotlin/ru/it/novelforge/data/auth/SecureSessionStore.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/ApiModels.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/AuthApi.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/StoryApi.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/AuthInterceptor.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/TokenAuthenticator.kt
+- data/src/main/kotlin/ru/it/novelforge/data/network/NetworkModule.kt
+- data/src/main/kotlin/ru/it/novelforge/data/repository/AuthRepositoryImpl.kt
+- data/src/main/kotlin/ru/it/novelforge/data/repository/StoryRepositoryImpl.kt
+- data/src/main/kotlin/ru/it/novelforge/data/local/Entities.kt
+- data/src/main/kotlin/ru/it/novelforge/data/local/StoryDao.kt
+- data/src/main/kotlin/ru/it/novelforge/data/local/NovelDatabase.kt
+- data/src/main/kotlin/ru/it/novelforge/data/mapper/Mappers.kt
+- data/src/main/kotlin/ru/it/novelforge/data/di/DataModule.kt
+
+ANDROID / APP
+- app/src/main/AndroidManifest.xml
+- app/src/debug/AndroidManifest.xml
+- app/src/main/kotlin/ru/it/novelforge/di/UseCaseModule.kt
+- app/src/main/kotlin/ru/it/novelforge/ui/NovelForgeApp.kt
+- app/src/main/kotlin/ru/it/novelforge/ui/auth/AuthScreen.kt
+- app/src/main/kotlin/ru/it/novelforge/ui/auth/AuthViewModel.kt
+- app/src/main/kotlin/ru/it/novelforge/ui/stories/StoriesScreen.kt
+- app/src/main/kotlin/ru/it/novelforge/ui/stories/StoriesViewModel.kt
+
+SERVER
+- server/ (вся папка)
+
+DOCS
+- README.md
+- ACCOUNTS_AND_SERVER.md
+- BUILD_CHECKS.txt
+
+EMAIL VERIFICATION UPDATE
+-------------------------
+server/app/config.py
+server/app/models.py
+server/app/schemas.py
+server/app/security.py
+server/app/mailer.py (new)
+server/app/auth.py
+server/app/dependencies.py
+server/app/main.py
+server/alembic/versions/0002_email_verification.py (new)
+server/.env.example
+server/docker-compose.yml
+server/docker-compose.prod.yml
+server/README.md
+
+domain/src/main/kotlin/ru/it/novelforge/domain/model/AuthModels.kt
+domain/src/main/kotlin/ru/it/novelforge/domain/repository/AuthRepository.kt
+
+data/src/main/kotlin/ru/it/novelforge/data/network/ApiModels.kt
+data/src/main/kotlin/ru/it/novelforge/data/network/AuthApi.kt
+data/src/main/kotlin/ru/it/novelforge/data/repository/AuthRepositoryImpl.kt
+
+app/src/main/kotlin/ru/it/novelforge/ui/auth/AuthViewModel.kt
+app/src/main/kotlin/ru/it/novelforge/ui/auth/AuthScreen.kt
+app/src/main/kotlin/ru/it/novelforge/ui/auth/EmailVerificationScreen.kt (new)
+app/src/main/kotlin/ru/it/novelforge/ui/NovelForgeApp.kt
+
+EMAIL_VERIFICATION.md (new)

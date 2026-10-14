@@ -8,17 +8,29 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StoryDao {
-    @Query("SELECT * FROM stories ORDER BY updatedAt DESC")
-    fun observeStories(): Flow<List<StoryEntity>>
+    @Query("SELECT * FROM stories WHERE ownerUserId = :ownerUserId AND pendingDelete = 0 ORDER BY updatedAt DESC")
+    fun observeStories(ownerUserId: String): Flow<List<StoryEntity>>
 
-    @Query("SELECT * FROM stories WHERE id = :storyId")
+    @Query("SELECT * FROM stories WHERE ownerUserId = :ownerUserId ORDER BY updatedAt DESC")
+    suspend fun getAllStories(ownerUserId: String): List<StoryEntity>
+
+    @Query("UPDATE stories SET ownerUserId = :ownerUserId, isDirty = 1 WHERE ownerUserId = ''")
+    suspend fun claimLegacyStories(ownerUserId: String)
+
+    @Query("SELECT * FROM stories WHERE id = :storyId AND pendingDelete = 0")
     fun observeStory(storyId: Long): Flow<StoryEntity?>
 
     @Query("SELECT * FROM stories WHERE id = :storyId")
     suspend fun getStory(storyId: Long): StoryEntity?
 
+    @Query("SELECT * FROM stories WHERE cloudId = :cloudId AND ownerUserId = :ownerUserId LIMIT 1")
+    suspend fun getStoryByCloudId(cloudId: String, ownerUserId: String): StoryEntity?
+
     @Query("SELECT * FROM characters WHERE storyId = :storyId ORDER BY name COLLATE NOCASE, id")
     fun observeCharacters(storyId: Long): Flow<List<CharacterEntity>>
+
+    @Query("SELECT * FROM characters WHERE storyId = :storyId ORDER BY id")
+    suspend fun getCharacters(storyId: Long): List<CharacterEntity>
 
     @Query("SELECT * FROM story_nodes WHERE storyId = :storyId ORDER BY id")
     fun observeNodes(storyId: Long): Flow<List<StoryNodeEntity>>
@@ -38,11 +50,49 @@ interface StoryDao {
     @Update
     suspend fun updateStory(entity: StoryEntity)
 
-    @Query("UPDATE stories SET manuscript = :manuscript, updatedAt = :timestamp WHERE id = :storyId")
+    @Query("UPDATE stories SET manuscript = :manuscript, updatedAt = :timestamp, isDirty = 1 WHERE id = :storyId")
     suspend fun updateManuscript(storyId: Long, manuscript: String, timestamp: Long)
 
+    @Query("UPDATE stories SET wordDocument = :wordDocument, updatedAt = :timestamp, isDirty = 1 WHERE id = :storyId")
+    suspend fun updateWordDocument(storyId: Long, wordDocument: String, timestamp: Long)
+
+    @Query("UPDATE stories SET pendingDelete = 1, isDirty = 1, updatedAt = :timestamp WHERE id = :storyId")
+    suspend fun markStoryPendingDelete(storyId: Long, timestamp: Long)
+
     @Query("DELETE FROM stories WHERE id = :storyId")
-    suspend fun deleteStory(storyId: Long)
+    suspend fun hardDeleteStory(storyId: Long)
+
+    @Query("DELETE FROM stories WHERE ownerUserId = :ownerUserId")
+    suspend fun deleteAllStories(ownerUserId: String)
+
+    @Query("UPDATE stories SET cloudId = :cloudId, cloudRevision = :revision, isDirty = CASE WHEN updatedAt = :expectedUpdatedAt THEN 0 ELSE isDirty END WHERE id = :storyId")
+    suspend fun markCloudSynced(
+        storyId: Long,
+        cloudId: String,
+        revision: Long,
+        expectedUpdatedAt: Long
+    )
+
+    @Query("UPDATE stories SET title = :title, description = :description, manuscript = :manuscript, wordDocument = :wordDocument, cloudRevision = :revision, isDirty = 0, pendingDelete = 0, createdAt = :createdAt, updatedAt = :updatedAt WHERE id = :storyId")
+    suspend fun updateStoryFromCloud(
+        storyId: Long,
+        title: String,
+        description: String,
+        manuscript: String,
+        wordDocument: String,
+        revision: Long,
+        createdAt: Long,
+        updatedAt: Long
+    )
+
+    @Query("DELETE FROM story_connections WHERE storyId = :storyId")
+    suspend fun deleteConnectionsForStory(storyId: Long)
+
+    @Query("DELETE FROM story_nodes WHERE storyId = :storyId")
+    suspend fun deleteNodesForStory(storyId: Long)
+
+    @Query("DELETE FROM characters WHERE storyId = :storyId")
+    suspend fun deleteCharactersForStory(storyId: Long)
 
     @Insert
     suspend fun insertCharacter(entity: CharacterEntity): Long
@@ -83,6 +133,6 @@ interface StoryDao {
     @Query("SELECT storyId FROM story_connections WHERE id = :connectionId")
     suspend fun getConnectionStoryId(connectionId: Long): Long?
 
-    @Query("UPDATE stories SET updatedAt = :timestamp WHERE id = :storyId")
+    @Query("UPDATE stories SET updatedAt = :timestamp, isDirty = 1 WHERE id = :storyId")
     suspend fun touchStory(storyId: Long, timestamp: Long)
 }

@@ -16,6 +16,7 @@ interface StoryRepository {
     suspend fun createStory(title: String, description: String): Long
     suspend fun updateStory(story: Story)
     suspend fun updateManuscript(storyId: Long, manuscript: String)
+    suspend fun updateWordDocument(storyId: Long, wordDocument: String)
     suspend fun deleteStory(storyId: Long)
 
     suspend fun upsertCharacter(character: CharacterProfile): Long
@@ -27,4 +28,7 @@ interface StoryRepository {
 
     suspend fun upsertConnection(connection: StoryConnection): Long
     suspend fun deleteConnection(connectionId: Long)
+
+    suspend fun syncAllStories()
+    suspend fun clearLocalStories()
 }

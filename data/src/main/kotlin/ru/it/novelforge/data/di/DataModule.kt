@@ -12,7 +12,9 @@ import javax.inject.Singleton
 import ru.it.novelforge.data.local.NovelDatabase
 import ru.it.novelforge.data.local.StoryDao
 import ru.it.novelforge.data.repository.StoryRepositoryImpl
+import ru.it.novelforge.data.repository.AuthRepositoryImpl
 import ru.it.novelforge.domain.repository.StoryRepository
+import ru.it.novelforge.domain.repository.AuthRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -27,7 +29,9 @@ object DatabaseModule {
         )
             .addMigrations(
                 NovelDatabase.MIGRATION_1_2,
-                NovelDatabase.MIGRATION_2_3
+                NovelDatabase.MIGRATION_2_3,
+                NovelDatabase.MIGRATION_3_4,
+                NovelDatabase.MIGRATION_4_5
             )
             .build()
 
@@ -41,4 +45,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindStoryRepository(impl: StoryRepositoryImpl): StoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 }

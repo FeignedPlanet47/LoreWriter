@@ -6,12 +6,24 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "stories")
+@Entity(
+    tableName = "stories",
+    indices = [
+        Index(value = ["cloudId"], unique = true),
+        Index(value = ["ownerUserId"])
+    ]
+)
 data class StoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val description: String,
     @ColumnInfo(defaultValue = "''") val manuscript: String = "",
+    @ColumnInfo(defaultValue = "''") val wordDocument: String = "",
+    @ColumnInfo(defaultValue = "''") val ownerUserId: String = "",
+    val cloudId: String? = null,
+    @ColumnInfo(defaultValue = "0") val cloudRevision: Long = 0,
+    @ColumnInfo(defaultValue = "1") val isDirty: Boolean = true,
+    @ColumnInfo(defaultValue = "0") val pendingDelete: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long
 )

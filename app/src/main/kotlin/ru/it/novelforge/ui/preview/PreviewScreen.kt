@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.it.novelforge.domain.model.NodeType
+import ru.it.novelforge.ui.common.RichText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,11 +81,20 @@ fun PreviewScreen(
                     Text(node.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
                     Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            node.text.ifBlank { "Текст сцены не задан" },
-                            modifier = Modifier.padding(20.dp),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        if (node.text.isBlank()) {
+                            Text(
+                                "Текст сцены не задан",
+                                modifier = Modifier.padding(20.dp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        } else {
+                            RichText(
+                                text = node.text,
+                                marks = node.formatting,
+                                modifier = Modifier.padding(20.dp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
                     }
                 }
 

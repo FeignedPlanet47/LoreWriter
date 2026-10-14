@@ -67,6 +67,13 @@ class UpdateManuscriptUseCase(
         repository.updateManuscript(storyId, manuscript)
 }
 
+class UpdateWordDocumentUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(storyId: Long, wordDocument: String) =
+        repository.updateWordDocument(storyId, wordDocument)
+}
+
 class UpsertCharacterUseCase(
     private val repository: StoryRepository
 ) {
@@ -117,6 +124,13 @@ class DeleteConnectionUseCase(
 ) {
     suspend operator fun invoke(connectionId: Long) =
         repository.deleteConnection(connectionId)
+}
+
+class SyncStoriesUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke() =
+        repository.syncAllStories()
 }
 
 class ValidateStoryUseCase {
@@ -574,6 +588,7 @@ class ExportStoryJsonUseCase {
             appendLine("    \"title\": \"${escape(graph.story.title)}\",")
             appendLine("    \"description\": \"${escape(graph.story.description)}\",")
             appendLine("    \"manuscript\": \"${escape(graph.story.manuscript)}\",")
+            appendLine("    \"wordDocument\": \"${escape(graph.story.wordDocument)}\",")
             appendLine("    \"createdAt\": ${graph.story.createdAt},")
             appendLine("    \"updatedAt\": ${graph.story.updatedAt}")
             appendLine("  },")
@@ -678,6 +693,7 @@ data class StoryUseCases(
     val getStoryGraph: GetStoryGraphUseCase,
     val observeCharacters: ObserveCharactersUseCase,
     val updateManuscript: UpdateManuscriptUseCase,
+    val updateWordDocument: UpdateWordDocumentUseCase,
     val upsertCharacter: UpsertCharacterUseCase,
     val deleteCharacter: DeleteCharacterUseCase,
     val upsertNode: UpsertNodeUseCase,
@@ -685,6 +701,7 @@ data class StoryUseCases(
     val updateNodePosition: UpdateNodePositionUseCase,
     val upsertConnection: UpsertConnectionUseCase,
     val deleteConnection: DeleteConnectionUseCase,
+    val syncStories: SyncStoriesUseCase,
     val validateStory: ValidateStoryUseCase,
     val exportText: ExportStoryTextUseCase,
     val exportJson: ExportStoryJsonUseCase

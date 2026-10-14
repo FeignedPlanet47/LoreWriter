@@ -19,6 +19,12 @@ fun StoryEntity.toDomain() = Story(
     title = title,
     description = description,
     manuscript = manuscript,
+    wordDocument = wordDocument,
+    ownerUserId = ownerUserId,
+    cloudId = cloudId,
+    cloudRevision = cloudRevision,
+    isDirty = isDirty,
+    pendingDelete = pendingDelete,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -28,6 +34,12 @@ fun Story.toEntity() = StoryEntity(
     title = title,
     description = description,
     manuscript = manuscript,
+    wordDocument = wordDocument,
+    ownerUserId = ownerUserId,
+    cloudId = cloudId,
+    cloudRevision = cloudRevision,
+    isDirty = isDirty,
+    pendingDelete = pendingDelete,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

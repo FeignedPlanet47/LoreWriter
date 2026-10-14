@@ -1,0 +1,43 @@
+NovelForge email verification - checks performed
+
+1. Python syntax:
+   python -m compileall app alembic
+   RESULT: OK
+
+2. Pydantic request validation:
+   - valid 6-digit verification code accepted
+   - invalid 5-digit code rejected
+   - registration schema accepted
+   RESULT: OK
+
+3. Alembic static SQL generation:
+   alembic upgrade head --sql
+   RESULT: OK
+   Verified DDL for:
+   - users.is_verified
+   - users.verified_at
+   - email_verification_codes table
+   - user_id index
+
+4. Kotlin domain AuthModels.kt:
+   kotlinc AuthModels.kt
+   RESULT: OK
+
+5. New/changed Kotlin files:
+   Basic delimiter/static sanity checks passed.
+
+6. Full Android Gradle build:
+   Not executed in this container because the required Gradle distribution/dependencies
+   are not available locally and this execution environment cannot download them.
+   Run locally in Android Studio / project root:
+       ./gradlew assembleDebug
+
+7. Full server runtime test:
+   The container does not have pwdlib installed, so the complete FastAPI runtime was not
+   started here. requirements.txt already contains pwdlib[argon2]. Docker build installs it.
+   Run locally:
+       cd server
+       cp .env.example .env
+       docker compose up --build
+   Then test Mailpit at:
+       http://localhost:8025

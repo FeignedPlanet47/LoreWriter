@@ -70,6 +70,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -86,6 +88,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.IOException
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlinx.coroutines.launch
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.StoryConnection
@@ -96,11 +99,13 @@ import ru.it.novelforge.domain.model.TextMarkType
 import ru.it.novelforge.domain.model.ValidationIssue
 import ru.it.novelforge.domain.model.ValidationSeverity
 import ru.it.novelforge.ui.common.RichText
+import ru.it.novelforge.ui.common.SpellingIssue
 import ru.it.novelforge.ui.common.adjustMarksAfterTextChange
 import ru.it.novelforge.ui.common.applyTextColor
 import ru.it.novelforge.ui.common.buildRichAnnotatedString
 import ru.it.novelforge.ui.common.clearTextFormatting
 import ru.it.novelforge.ui.common.parseHexColor
+import ru.it.novelforge.ui.common.rememberSpellCheckState
 import ru.it.novelforge.ui.common.toggleTextMark
 
 private const val CANVAS_WIDTH_DP = 2600f
@@ -111,6 +116,10 @@ private const val NODE_HEIGHT_DP = 150f
 private const val MODE_DIVIDER_LEFT_DP = 80f
 private const val MODE_DIVIDER_WIDTH_DP = 2200f
 private const val MODE_DIVIDER_HEIGHT_DP = 72f
+
+private const val CONNECTION_STROKE_WIDTH = 9f
+private const val CONNECTION_HEAD_LENGTH_DP = 30f
+private const val CONNECTION_HEAD_WIDTH_DP = 17f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -583,6 +592,9 @@ private fun StoryGraphCanvas(
     val density =
         LocalDensity.current
 
+    val connectionColor =
+        MaterialTheme.colorScheme.primary
+
     LaunchedEffect(
         graph.nodes
     ) {
@@ -720,31 +732,13 @@ private fun StoryGraphCanvas(
                                         density.density
                         )
 
-                    drawLine(
-
-                        color =
-                            Color.Gray,
-
-                        start =
-                            start,
-
-                        end =
-                            end,
-
-                        strokeWidth =
-                            4f
-                    )
-
-                    drawCircle(
-
-                        color =
-                            Color.Gray,
-
-                        radius =
-                            7f,
-
-                        center =
-                            end
+                    drawArrowConnection(
+                        start = start,
+                        end = end,
+                        color = connectionColor,
+                        strokeWidth = CONNECTION_STROKE_WIDTH,
+                        arrowHeadLength = CONNECTION_HEAD_LENGTH_DP * density.density,
+                        arrowHeadWidth = CONNECTION_HEAD_WIDTH_DP * density.density
                     )
                 }
             }
@@ -824,6 +818,61 @@ private fun StoryGraphCanvas(
             }
         }
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrowConnection(
+    start: Offset,
+    end: Offset,
+    color: Color,
+    strokeWidth: Float,
+    arrowHeadLength: Float,
+    arrowHeadWidth: Float
+) {
+    val dx = end.x - start.x
+    val dy = end.y - start.y
+    val distance = sqrt(dx * dx + dy * dy)
+
+    if (distance <= 0.1f) return
+
+    val directionX = dx / distance
+    val directionY = dy / distance
+    val perpendicularX = -directionY
+    val perpendicularY = directionX
+
+    val arrowBaseCenter = Offset(
+        x = end.x - directionX * arrowHeadLength,
+        y = end.y - directionY * arrowHeadLength
+    )
+
+    drawLine(
+        color = color,
+        start = start,
+        end = arrowBaseCenter,
+        strokeWidth = strokeWidth,
+        cap = StrokeCap.Round
+    )
+
+    val leftPoint = Offset(
+        x = arrowBaseCenter.x + perpendicularX * arrowHeadWidth,
+        y = arrowBaseCenter.y + perpendicularY * arrowHeadWidth
+    )
+
+    val rightPoint = Offset(
+        x = arrowBaseCenter.x - perpendicularX * arrowHeadWidth,
+        y = arrowBaseCenter.y - perpendicularY * arrowHeadWidth
+    )
+
+    val arrowHead = Path().apply {
+        moveTo(end.x, end.y)
+        lineTo(leftPoint.x, leftPoint.y)
+        lineTo(rightPoint.x, rightPoint.y)
+        close()
+    }
+
+    drawPath(
+        path = arrowHead,
+        color = color
+    )
 }
 
 @Composable
@@ -1393,6 +1442,12 @@ private fun NodeEditorDialog(
                 .orEmpty()
         }
 
+    val spellCheckState =
+        rememberSpellCheckState(
+            text = textValue.text,
+            enabled = type != NodeType.MODE_DIVIDER
+        )
+
     val styledTextValue =
         TextFieldValue(
 
@@ -1401,7 +1456,9 @@ private fun NodeEditorDialog(
                     text =
                         textValue.text,
                     marks =
-                        formatting
+                        formatting,
+                    spellingIssues =
+                        spellCheckState.issues
                 ),
 
             selection =
@@ -1571,158 +1628,181 @@ private fun NodeEditorDialog(
 
                     RichTextFormattingToolbar(
 
-                        selectionStart =
-                            textValue
-                                .selection
-                                .min,
+                    selectionStart =
+                        textValue
+                            .selection
+                            .min,
 
-                        selectionEnd =
-                            textValue
-                                .selection
-                                .max,
+                    selectionEnd =
+                        textValue
+                            .selection
+                            .max,
+
+                    formatting =
+                        formatting,
+
+                    customColor =
+                        customColor,
+
+                    onCustomColorChange = {
+                        customColor = it
+                    },
+
+                    onToggle = { markType ->
 
                         formatting =
-                            formatting,
+                            toggleTextMark(
 
-                        customColor =
-                            customColor,
+                                marks =
+                                    formatting,
 
-                        onCustomColorChange = {
-                            customColor = it
-                        },
+                                start =
+                                    textValue
+                                        .selection
+                                        .min,
 
-                        onToggle = { markType ->
+                                end =
+                                    textValue
+                                        .selection
+                                        .max,
 
-                            formatting =
-                                toggleTextMark(
-
-                                    marks =
-                                        formatting,
-
-                                    start =
-                                        textValue
-                                            .selection
-                                            .min,
-
-                                    end =
-                                        textValue
-                                            .selection
-                                            .max,
-
-                                    type =
-                                        markType
-                                )
-                        },
-
-                        onColor = { colorHex ->
-
-                            formatting =
-                                applyTextColor(
-
-                                    marks =
-                                        formatting,
-
-                                    start =
-                                        textValue
-                                            .selection
-                                            .min,
-
-                                    end =
-                                        textValue
-                                            .selection
-                                            .max,
-
-                                    colorHex =
-                                        colorHex
-                                )
-                        },
-
-                        onClear = {
-
-                            formatting =
-                                clearTextFormatting(
-
-                                    marks =
-                                        formatting,
-
-                                    start =
-                                        textValue
-                                            .selection
-                                            .min,
-
-                                    end =
-                                        textValue
-                                            .selection
-                                            .max
-                                )
-                        }
-                    )
-
-                    OutlinedTextField(
-
-                        value =
-                            styledTextValue,
-
-                        onValueChange = { updated ->
-
-                            formatting =
-                                adjustMarksAfterTextChange(
-
-                                    oldText =
-                                        textValue.text,
-
-                                    newText =
-                                        updated.text,
-
-                                    marks =
-                                        formatting
-                                )
-
-                            textValue =
-                                TextFieldValue(
-
-                                    text =
-                                        updated.text,
-
-                                    selection =
-                                        updated.selection,
-
-                                    composition =
-                                        updated.composition
-                                )
-                        },
-
-                        label = {
-
-                            Text(
-                                "Текст сцены, реплика или описание действия"
+                                type =
+                                    markType
                             )
-                        },
+                    },
 
-                        minLines =
-                            5,
+                    onColor = { colorHex ->
 
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
+                        formatting =
+                            applyTextColor(
 
-                    OutlinedButton(
+                                marks =
+                                    formatting,
 
-                        onClick = {
+                                start =
+                                    textValue
+                                        .selection
+                                        .min,
 
-                            showFullScreenEditor =
-                                true
-                        },
+                                end =
+                                    textValue
+                                        .selection
+                                        .max,
 
-                        modifier =
-                            Modifier.fillMaxWidth()
+                                colorHex =
+                                    colorHex
+                            )
+                    },
 
-                    ) {
+                    onClear = {
+
+                        formatting =
+                            clearTextFormatting(
+
+                                marks =
+                                    formatting,
+
+                                start =
+                                    textValue
+                                        .selection
+                                        .min,
+
+                                end =
+                                    textValue
+                                        .selection
+                                        .max
+                            )
+                    }
+                )
+
+                OutlinedTextField(
+
+                    value =
+                        styledTextValue,
+
+                    onValueChange = { updated ->
+
+                        formatting =
+                            adjustMarksAfterTextChange(
+
+                                oldText =
+                                    textValue.text,
+
+                                newText =
+                                    updated.text,
+
+                                marks =
+                                    formatting
+                            )
+
+                        textValue =
+                            TextFieldValue(
+
+                                text =
+                                    updated.text,
+
+                                selection =
+                                    updated.selection,
+
+                                composition =
+                                    updated.composition
+                            )
+                    },
+
+                    label = {
 
                         Text(
-                            "Открыть редактор на весь экран"
+                            "Текст сцены, реплика или описание действия"
                         )
-                    }
+                    },
+
+                    minLines =
+                        5,
+
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+
+                when {
+                    !spellCheckState.isAvailable ->
+                        Text(
+                            text = "Системная проверка орфографии выключена",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                    spellCheckState.isChecking ->
+                        Text(
+                            text = "Проверка орфографии…",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                    spellCheckState.issues.isNotEmpty() ->
+                        Text(
+                            text = "Возможных ошибок: ${spellCheckState.issues.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                }
+
+                OutlinedButton(
+
+                    onClick = {
+
+                        showFullScreenEditor =
+                            true
+                    },
+
+                    modifier =
+                        Modifier.fillMaxWidth()
+
+                ) {
+
+                    Text(
+                        "Открыть редактор на весь экран"
+                    )
+                }
 
                 } else {
 
@@ -2055,6 +2135,9 @@ private fun NodeEditorDialog(
             formatting =
                 formatting,
 
+            spellingIssues =
+                spellCheckState.issues,
+
             nodeType =
                 type,
 
@@ -2091,6 +2174,7 @@ private fun NodeEditorDialog(
 private fun FullScreenTextEditor(
     textValue: TextFieldValue,
     formatting: List<TextFormatMark>,
+    spellingIssues: List<SpellingIssue>,
     nodeType: NodeType,
     customColor: String,
     onCustomColorChange: (String) -> Unit,
@@ -2107,7 +2191,9 @@ private fun FullScreenTextEditor(
                     text =
                         textValue.text,
                     marks =
-                        formatting
+                        formatting,
+                    spellingIssues =
+                        spellingIssues
                 ),
 
             selection =

@@ -1,0 +1,17 @@
+{$API_DOMAIN} {
+    encode zstd gzip
+
+    # Ограничение размера одного snapshot истории.
+    request_body {
+        max_size 25MB
+    }
+
+    reverse_proxy api:8000
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+}
