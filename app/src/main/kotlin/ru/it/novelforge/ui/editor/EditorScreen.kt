@@ -107,6 +107,8 @@ import ru.it.novelforge.ui.common.clearTextFormatting
 import ru.it.novelforge.ui.common.parseHexColor
 import ru.it.novelforge.ui.common.rememberSpellCheckState
 import ru.it.novelforge.ui.common.toggleTextMark
+import ru.it.novelforge.ui.CollaboratorBubbles
+import ru.it.novelforge.ui.collaborators.CollaboratorBubbles
 
 private const val CANVAS_WIDTH_DP = 2600f
 private const val CANVAS_HEIGHT_DP = 1900f
@@ -125,11 +127,13 @@ private const val CONNECTION_HEAD_WIDTH_DP = 17f
 @Composable
 fun EditorScreen(
     onOpenMenu: () -> Unit,
+    onOpenCollaborators: () -> Unit,
     onPreview: (Long) -> Unit,
     viewModel: EditorViewModel = hiltViewModel()
 ) {
 
     val graph by viewModel.graph.collectAsStateWithLifecycle()
+    val collaboratorsState by viewModel.collaboratorsUiState.collectAsStateWithLifecycle()
     val canEdit = graph?.story?.accessRole?.canEdit == true
 
     var editingNode by remember {
@@ -399,23 +403,32 @@ fun EditorScreen(
 
         } else {
 
-            StoryGraphCanvas(
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                StoryGraphCanvas(
+                    graph = currentGraph,
+                    modifier = Modifier.fillMaxSize(),
+                    onNodeClick = { node ->
+                        if (canEdit) editingNode = node
+                    },
+                    onMoveNode =
+                        if (canEdit) viewModel::moveNode else { _, _, _ -> }
+                )
 
-                graph =
-                    currentGraph,
-
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-
-                onNodeClick = { node ->
-                    if (canEdit) editingNode = node
-                },
-
-                onMoveNode =
-                    if (canEdit) viewModel::moveNode else { _, _, _ -> }
-            )
+                if (currentGraph.story.cloudId != null) {
+                    CollaboratorBubbles(
+                        members = collaboratorsState.members,
+                        loading = collaboratorsState.loading,
+                        onOpen = onOpenCollaborators,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 12.dp, end = 12.dp)
+                    )
+                }
+            }
         }
     }
 

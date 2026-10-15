@@ -5,18 +5,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.it.novelforge.domain.model.CharacterProfile
+import ru.it.novelforge.domain.model.CollaboratorPermissions
 import ru.it.novelforge.domain.model.NodeType
+import ru.it.novelforge.domain.model.StoryAccessRole
+import ru.it.novelforge.domain.model.StoryCollaborator
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
 import ru.it.novelforge.domain.model.TextFormatMark
 import ru.it.novelforge.domain.model.ValidationIssue
 import ru.it.novelforge.domain.usecase.StoryUseCases
+
+data class CollaboratorsUiState(
+    val loading: Boolean = false,
+    val members: List<StoryCollaborator> = emptyList(),
+    val error: String? = null
+)
 
 @HiltViewModel
 class EditorViewModel @Inject constructor(
@@ -36,6 +50,26 @@ class EditorViewModel @Inject constructor(
                 null
             )
 
+    private val _collaboratorsUiState = MutableStateFlow(CollaboratorsUiState())
+    val collaboratorsUiState: StateFlow<CollaboratorsUiState> =
+        _collaboratorsUiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            graph
+                .filterNotNull()
+                .map { it.story.cloudId }
+                .distinctUntilChanged()
+                .collect { cloudId ->
+                    if (cloudId != null) {
+                        refreshCollaborators()
+                    } else {
+                        _collaboratorsUiState.value = CollaboratorsUiState()
+                    }
+                }
+        }
+    }
+
     val characters: StateFlow<List<CharacterProfile>> =
         useCases
             .observeCharacters(storyId)
@@ -44,6 +78,86 @@ class EditorViewModel @Inject constructor(
                 SharingStarted.WhileSubscribed(5_000),
                 emptyList()
             )
+
+    fun refreshCollaborators() {
+        if (graph.value?.story?.cloudId == null) return
+
+        viewModelScope.launch {
+            _collaboratorsUiState.value =
+                _collaboratorsUiState.value.copy(loading = true, error = null)
+
+            runCatching {
+                useCases.getCollaborators(storyId)
+            }.onSuccess { members ->
+                _collaboratorsUiState.value = CollaboratorsUiState(
+                    loading = false,
+                    members = members
+                )
+            }.onFailure { error ->
+                _collaboratorsUiState.value =
+                    _collaboratorsUiState.value.copy(
+                        loading = false,
+                        error = error.message ?: "Не удалось загрузить участников"
+                    )
+            }
+        }
+    }
+
+    fun updateCollaborator(
+        userId: String,
+        role: StoryAccessRole,
+        permissions: CollaboratorPermissions
+    ) {
+        viewModelScope.launch {
+            _collaboratorsUiState.value =
+                _collaboratorsUiState.value.copy(loading = true, error = null)
+
+            runCatching {
+                useCases.updateCollaborator(
+                    storyId = storyId,
+                    userId = userId,
+                    role = role,
+                    permissions = permissions
+                )
+            }.onSuccess { updated ->
+                val members = _collaboratorsUiState.value.members.map { member ->
+                    if (member.userId == updated.userId) updated else member
+                }
+                _collaboratorsUiState.value = CollaboratorsUiState(
+                    loading = false,
+                    members = members
+                )
+            }.onFailure { error ->
+                _collaboratorsUiState.value =
+                    _collaboratorsUiState.value.copy(
+                        loading = false,
+                        error = error.message ?: "Не удалось изменить доступ"
+                    )
+            }
+        }
+    }
+
+    fun removeCollaborator(userId: String) {
+        viewModelScope.launch {
+            _collaboratorsUiState.value =
+                _collaboratorsUiState.value.copy(loading = true, error = null)
+
+            runCatching {
+                useCases.removeCollaborator(storyId, userId)
+            }.onSuccess {
+                _collaboratorsUiState.value = CollaboratorsUiState(
+                    loading = false,
+                    members = _collaboratorsUiState.value.members.filterNot { it.userId == userId }
+                )
+            }.onFailure { error ->
+                _collaboratorsUiState.value =
+                    _collaboratorsUiState.value.copy(
+                        loading = false,
+                        error = error.message ?: "Не удалось удалить доступ"
+                    )
+            }
+        }
+    }
 
     fun updateManuscript(text: String) {
         if (!canEditCurrentStory()) return

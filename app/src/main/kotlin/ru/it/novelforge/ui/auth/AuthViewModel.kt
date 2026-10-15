@@ -13,6 +13,7 @@ import ru.it.novelforge.domain.model.EmailAlreadyRegisteredException
 import ru.it.novelforge.domain.model.EmailDeliveryException
 import ru.it.novelforge.domain.model.EmailVerificationRequiredException
 import ru.it.novelforge.domain.model.InvalidVerificationCodeException
+import ru.it.novelforge.domain.model.LoginAlreadyRegisteredException
 import ru.it.novelforge.domain.model.UserAccount
 import ru.it.novelforge.domain.model.VerificationAttemptsExceededException
 import ru.it.novelforge.domain.model.VerificationCodeExpiredException
@@ -20,6 +21,9 @@ import ru.it.novelforge.domain.model.VerificationResendTooSoonException
 import ru.it.novelforge.domain.model.VerificationSendLimitException
 import ru.it.novelforge.domain.repository.AuthRepository
 import ru.it.novelforge.domain.repository.StoryRepository
+
+
+private val LOGIN_REGEX = Regex("^[\\p{L}\\p{N}._-]{3,32}$")
 
 data class AuthUiState(
     val initializing: Boolean = true,
@@ -74,10 +78,17 @@ class AuthViewModel @Inject constructor(
     }
 
     fun login(
-        email: String,
+        login: String,
         password: String
     ) {
         if (_state.value.loading) {
+            return
+        }
+
+        if (!LOGIN_REGEX.matches(login.trim())) {
+            _state.value = _state.value.copy(
+                error = "Логин должен содержать 3–32 символа: буквы, цифры, точку, _ или -"
+            )
             return
         }
 
@@ -91,7 +102,7 @@ class AuthViewModel @Inject constructor(
 
             runCatching {
                 authRepository.login(
-                    email,
+                    login,
                     password
                 )
             }.onSuccess { user ->
@@ -110,7 +121,7 @@ class AuthViewModel @Inject constructor(
             }.onFailure { error ->
                 if (
                     error is
-                    EmailVerificationRequiredException
+                            EmailVerificationRequiredException
                 ) {
                     _state.value =
                         _state.value.copy(
@@ -120,7 +131,7 @@ class AuthViewModel @Inject constructor(
                             error = null,
                             info =
                                 "Email ещё не подтверждён. " +
-                                    "Введите код из письма или отправьте новый."
+                                        "Введите код из письма или отправьте новый."
                         )
                 } else {
                     _state.value =
@@ -136,9 +147,16 @@ class AuthViewModel @Inject constructor(
     fun register(
         email: String,
         password: String,
-        displayName: String
+        login: String
     ) {
         if (_state.value.loading) {
+            return
+        }
+
+        if (!LOGIN_REGEX.matches(login.trim())) {
+            _state.value = _state.value.copy(
+                error = "Логин должен содержать 3–32 символа: буквы, цифры, точку, _ или -"
+            )
             return
         }
 
@@ -154,7 +172,7 @@ class AuthViewModel @Inject constructor(
                 authRepository.register(
                     email,
                     password,
-                    displayName
+                    login
                 )
             }.onSuccess { pending ->
                 _state.value =
@@ -163,7 +181,7 @@ class AuthViewModel @Inject constructor(
                         verificationEmail = pending.email,
                         resendAvailableAtMillis =
                             System.currentTimeMillis() +
-                                pending.resendAfterSeconds * 1_000L,
+                                    pending.resendAfterSeconds * 1_000L,
                         error = null,
                         info =
                             "Код подтверждения отправлен на ${pending.email}"
@@ -250,7 +268,7 @@ class AuthViewModel @Inject constructor(
                         loading = false,
                         resendAvailableAtMillis =
                             System.currentTimeMillis() +
-                                pending.resendAfterSeconds * 1_000L,
+                                    pending.resendAfterSeconds * 1_000L,
                         error = null,
                         info =
                             "Новый код отправлен на ${pending.email}"
@@ -274,7 +292,7 @@ class AuthViewModel @Inject constructor(
                         resendAvailableAtMillis =
                             if (retryAfter != null) {
                                 System.currentTimeMillis() +
-                                    retryAfter * 1_000L
+                                        retryAfter * 1_000L
                             } else {
                                 _state.value.resendAvailableAtMillis
                             },
@@ -340,6 +358,9 @@ private fun Throwable.toUserMessage(): String =
         is EmailAlreadyRegisteredException ->
             "Аккаунт с таким email уже существует"
 
+        is LoginAlreadyRegisteredException ->
+            "Такой логин уже занят"
+
         is InvalidVerificationCodeException ->
             "Неверный код подтверждения"
 
@@ -364,7 +385,7 @@ private fun Throwable.toUserMessage(): String =
 
             when {
                 raw.contains("401") ->
-                    "Неверный email или пароль"
+                    "Неверный логин или пароль"
 
                 raw.contains(
                     "Unable to resolve host",

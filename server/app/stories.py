@@ -12,11 +12,14 @@ from .dependencies import current_user
 from .models import Story, StoryCollaborator, StoryShareLink, User, utcnow
 from .schemas import (
     CollaboratorResponse,
+    UpdateCollaboratorRequest,
     CreateShareLinkRequest,
     ShareLinkResponse,
     StoryResponse,
     StoryUpsertRequest,
 )
+
+from .permissions import effective, validate_custom
 
 router = APIRouter(tags=["stories"])
 
@@ -122,6 +125,31 @@ async def create_story(
     return story_out(story, "owner")
 
 
+def _payload_changes_allowed(old: dict, new: dict, permissions: dict) -> bool:
+    # Whole-document PUT: compare protected sections to prevent bypassing UI toggles.
+    if old.get("nodes") != new.get("nodes"):
+        before = {n["clientId"]: n for n in old.get("nodes", [])}
+        after = {n["clientId"]: n for n in new.get("nodes", [])}
+        if before.keys() != after.keys() and permissions["blocks"] != "full":
+            return False
+        for node_id in before.keys() & after.keys():
+            a, b = before[node_id], after[node_id]
+            if (a.get("positionX"), a.get("positionY")) != (b.get("positionX"), b.get("positionY")):
+                if permissions["blocks"] not in {"move", "edit", "full"}: return False
+            if {k:v for k,v in a.items() if k not in {"positionX","positionY"}} != {k:v for k,v in b.items() if k not in {"positionX","positionY"}}:
+                if permissions["blocks"] not in {"edit", "full"}: return False
+    if old.get("connections") != new.get("connections"):
+        before = {n["clientId"]: n for n in old.get("connections", [])}
+        after = {n["clientId"]: n for n in new.get("connections", [])}
+        if before.keys() != after.keys() and permissions["lines"] != "full": return False
+        for line_id in before.keys() & after.keys():
+            if before[line_id] != after[line_id] and permissions["lines"] not in {"edit", "full"}: return False
+    for field in ("manuscript", "wordDocument", "characters", "description"):
+        if old.get(field) != new.get(field) and permissions["script"] not in {"edit", "full"}: return False
+    if old.get("title") != new.get("title") and permissions["script"] != "full": return False
+    return True
+
+
 @router.put("/stories/{story_id}", response_model=StoryResponse)
 async def update_story(
     story_id: UUID,
@@ -130,7 +158,14 @@ async def update_story(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     story, role = await get_story_with_access(db, story_id, user)
-    if role not in {"owner", "editor"}:
+    if role not in {"owner", "admin", "editor", "reader"}:
+        raise HTTPException(status_code=403, detail="No access")
+    if role != "owner":
+        collaborator = await db.scalar(select(StoryCollaborator).where(StoryCollaborator.story_id == story_id, StoryCollaborator.user_id == user.id))
+        perms = effective(role, collaborator.permissions)
+        if not _payload_changes_allowed(story.payload, body.payload.model_dump(mode="json"), perms):
+            raise HTTPException(status_code=403, detail="Insufficient edit permissions")
+    if role not in {"owner", "admin", "editor"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "story_read_only", "message": "Reader access is read-only"},
@@ -288,11 +323,7 @@ async def list_collaborators(
     user: Annotated[User, Depends(current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    story = await db.scalar(
-        select(Story).where(Story.id == story_id, Story.owner_id == user.id)
-    )
-    if not story:
-        raise HTTPException(status_code=404, detail="Story not found")
+    story, _ = await get_story_with_access(db, story_id, user)
 
     rows = (
         await db.execute(
@@ -303,15 +334,19 @@ async def list_collaborators(
         )
     ).all()
 
-    return [
-        CollaboratorResponse(
+    owner = await db.get(User, story.owner_id)
+    result = [CollaboratorResponse(userId=owner.id, email=owner.email, login=owner.login, displayName=owner.login, role="owner", permissions=effective("owner"))]
+    result.extend([CollaboratorResponse(
             userId=collaborator.user_id,
             email=collaborator_user.email,
-            displayName=collaborator_user.display_name,
+            login=collaborator_user.login,
+            displayName=collaborator_user.login,
             role=collaborator.role,
+            permissions=effective(collaborator.role, collaborator.permissions),
         )
         for collaborator, collaborator_user in rows
-    ]
+    ])
+    return result
 
 
 @router.delete(
@@ -337,3 +372,35 @@ async def remove_collaborator(
         )
     )
     await db.commit()
+
+
+@router.patch("/stories/{story_id}/collaborators/{collaborator_user_id}", response_model=CollaboratorResponse)
+async def update_collaborator(
+    story_id: UUID,
+    collaborator_user_id: UUID,
+    body: UpdateCollaboratorRequest,
+    user: Annotated[User, Depends(current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    story, actor_role = await get_story_with_access(db, story_id, user)
+    if collaborator_user_id == story.owner_id:
+        raise HTTPException(status_code=403, detail="Owner cannot be modified")
+    target = await db.scalar(select(StoryCollaborator).where(StoryCollaborator.story_id == story_id, StoryCollaborator.user_id == collaborator_user_id))
+    if target is None:
+        raise HTTPException(status_code=404, detail="Collaborator not found")
+    if actor_role != "owner":
+        actor = await db.scalar(select(StoryCollaborator).where(StoryCollaborator.story_id == story_id, StoryCollaborator.user_id == user.id))
+        if actor_role != "admin" or effective(actor_role, actor.permissions)["members"] not in {"manage", "full"}:
+            raise HTTPException(status_code=403, detail="Cannot manage members")
+        if target.role == "admin" or body.role == "admin":
+            raise HTTPException(status_code=403, detail="Only owner can manage admins")
+    custom = body.permissions.model_dump()
+    try:
+        validate_custom(body.role, custom)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    target.role = body.role
+    target.permissions = custom
+    await db.commit()
+    member = await db.get(User, target.user_id)
+    return CollaboratorResponse(userId=member.id, email=member.email, login=member.login, displayName=member.login, role=target.role, permissions=effective(target.role, target.permissions))

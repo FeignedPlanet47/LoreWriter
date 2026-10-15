@@ -1,0 +1,20 @@
+services:
+  migrate:
+    build: .
+    env_file:
+      - .env.migrations
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build: .
+    env_file:
+      - .env
+    environment:
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped

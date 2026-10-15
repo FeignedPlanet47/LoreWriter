@@ -2,9 +2,11 @@ package ru.it.novelforge.domain.usecase
 
 import kotlinx.coroutines.flow.Flow
 import ru.it.novelforge.domain.model.CharacterProfile
+import ru.it.novelforge.domain.model.CollaboratorPermissions
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.Story
 import ru.it.novelforge.domain.model.StoryAccessRole
+import ru.it.novelforge.domain.model.StoryCollaborator
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
@@ -139,6 +141,32 @@ class AcceptStoryShareLinkUseCase(
 ) {
     suspend operator fun invoke(token: String): Long =
         repository.acceptShareLink(token)
+}
+
+class GetStoryCollaboratorsUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(storyId: Long): List<StoryCollaborator> =
+        repository.getCollaborators(storyId)
+}
+
+class UpdateStoryCollaboratorUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(
+        storyId: Long,
+        userId: String,
+        role: StoryAccessRole,
+        permissions: CollaboratorPermissions
+    ): StoryCollaborator =
+        repository.updateCollaborator(storyId, userId, role, permissions)
+}
+
+class RemoveStoryCollaboratorUseCase(
+    private val repository: StoryRepository
+) {
+    suspend operator fun invoke(storyId: Long, userId: String) =
+        repository.removeCollaborator(storyId, userId)
 }
 
 class SyncStoriesUseCase(
@@ -718,6 +746,9 @@ data class StoryUseCases(
     val deleteConnection: DeleteConnectionUseCase,
     val createShareLink: CreateStoryShareLinkUseCase,
     val acceptShareLink: AcceptStoryShareLinkUseCase,
+    val getCollaborators: GetStoryCollaboratorsUseCase,
+    val updateCollaborator: UpdateStoryCollaboratorUseCase,
+    val removeCollaborator: RemoveStoryCollaboratorUseCase,
     val syncStories: SyncStoriesUseCase,
     val validateStory: ValidateStoryUseCase,
     val exportText: ExportStoryTextUseCase,

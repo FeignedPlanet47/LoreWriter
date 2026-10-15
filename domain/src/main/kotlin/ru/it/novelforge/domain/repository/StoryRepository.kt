@@ -6,7 +6,9 @@ import ru.it.novelforge.domain.model.Story
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
+import ru.it.novelforge.domain.model.CollaboratorPermissions
 import ru.it.novelforge.domain.model.StoryAccessRole
+import ru.it.novelforge.domain.model.StoryCollaborator
 
 interface StoryRepository {
     fun observeStories(): Flow<List<Story>>
@@ -32,6 +34,15 @@ interface StoryRepository {
 
     suspend fun createShareLink(storyId: Long, role: StoryAccessRole): String
     suspend fun acceptShareLink(token: String): Long
+
+    suspend fun getCollaborators(storyId: Long): List<StoryCollaborator>
+    suspend fun updateCollaborator(
+        storyId: Long,
+        userId: String,
+        role: StoryAccessRole,
+        permissions: CollaboratorPermissions
+    ): StoryCollaborator
+    suspend fun removeCollaborator(storyId: Long, userId: String)
 
     suspend fun syncAllStories()
     suspend fun clearLocalStories()

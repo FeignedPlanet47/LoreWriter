@@ -24,6 +24,8 @@ import ru.it.novelforge.data.local.StoryNodeEntity
 import ru.it.novelforge.data.mapper.toDomain
 import ru.it.novelforge.data.mapper.toEntity
 import ru.it.novelforge.data.network.CharacterDto
+import ru.it.novelforge.data.network.CollaboratorPermissionsDto
+import ru.it.novelforge.data.network.CollaboratorResponseDto
 import ru.it.novelforge.data.network.CreateShareLinkRequestDto
 import ru.it.novelforge.data.network.StoryApi
 import ru.it.novelforge.data.network.StoryConnectionDto
@@ -32,10 +34,18 @@ import ru.it.novelforge.data.network.StoryPayloadDto
 import ru.it.novelforge.data.network.StoryResponseDto
 import ru.it.novelforge.data.network.StoryUpsertRequestDto
 import ru.it.novelforge.data.network.TextFormatMarkDto
+import ru.it.novelforge.data.network.UpdateCollaboratorRequestDto
+import ru.it.novelforge.domain.model.BlockAccessLevel
 import ru.it.novelforge.domain.model.CharacterProfile
+import ru.it.novelforge.domain.model.CollaboratorPermissions
+import ru.it.novelforge.domain.model.ExportAccessLevel
+import ru.it.novelforge.domain.model.LineAccessLevel
+import ru.it.novelforge.domain.model.MemberAccessLevel
 import ru.it.novelforge.domain.model.NodeType
 import ru.it.novelforge.domain.model.Story
 import ru.it.novelforge.domain.model.StoryAccessRole
+import ru.it.novelforge.domain.model.ScriptAccessLevel
+import ru.it.novelforge.domain.model.StoryCollaborator
 import ru.it.novelforge.domain.model.StoryConnection
 import ru.it.novelforge.domain.model.StoryGraph
 import ru.it.novelforge.domain.model.StoryNode
@@ -343,6 +353,56 @@ class StoryRepositoryImpl @Inject constructor(
             }
             existing.id
         }
+    }
+
+    override suspend fun getCollaborators(storyId: Long): List<StoryCollaborator> {
+        var story = requireAccessibleStory(storyId)
+
+        if (story.cloudId.isNullOrBlank() && story.accessRole == StoryAccessRole.OWNER.name) {
+            pushStory(storyId)
+            story = requireAccessibleStory(storyId)
+        }
+
+        val cloudId = checkNotNull(story.cloudId) {
+            "История еще не синхронизирована с сервером"
+        }
+
+        return storyApi.listCollaborators(cloudId).map(::collaboratorFromRemote)
+    }
+
+    override suspend fun updateCollaborator(
+        storyId: Long,
+        userId: String,
+        role: StoryAccessRole,
+        permissions: CollaboratorPermissions
+    ): StoryCollaborator {
+        require(role != StoryAccessRole.OWNER) {
+            "Роль владельца нельзя назначить через редактор доступа"
+        }
+
+        val story = requireAccessibleStory(storyId)
+        val cloudId = checkNotNull(story.cloudId) {
+            "История еще не синхронизирована с сервером"
+        }
+
+        val remote = storyApi.updateCollaborator(
+            storyId = cloudId,
+            userId = userId,
+            body = UpdateCollaboratorRequestDto(
+                role = role.name.lowercase(),
+                permissions = permissions.toDto()
+            )
+        )
+
+        return collaboratorFromRemote(remote)
+    }
+
+    override suspend fun removeCollaborator(storyId: Long, userId: String) {
+        val story = requireAccessibleStory(storyId)
+        val cloudId = checkNotNull(story.cloudId) {
+            "История еще не синхронизирована с сервером"
+        }
+        storyApi.removeCollaborator(cloudId, userId)
     }
 
     override suspend fun syncAllStories() {
@@ -668,8 +728,48 @@ class StoryRepositoryImpl @Inject constructor(
         when (remote.accessRole.lowercase()) {
             "reader" -> StoryAccessRole.READER
             "editor" -> StoryAccessRole.EDITOR
+            "admin" -> StoryAccessRole.ADMIN
             else -> StoryAccessRole.OWNER
         }
+
+    private fun collaboratorFromRemote(remote: CollaboratorResponseDto): StoryCollaborator =
+        StoryCollaborator(
+            userId = remote.userId,
+            email = remote.email,
+            displayName = remote.displayName,
+            role = remoteRole(remote.role),
+            permissions = CollaboratorPermissions(
+                blocks = enumValueOrDefault(remote.permissions.blocks, BlockAccessLevel.VIEW),
+                lines = enumValueOrDefault(remote.permissions.lines, LineAccessLevel.VIEW),
+                script = enumValueOrDefault(remote.permissions.script, ScriptAccessLevel.READ),
+                members = enumValueOrDefault(remote.permissions.members, MemberAccessLevel.NONE),
+                export = enumValueOrDefault(remote.permissions.export, ExportAccessLevel.NONE)
+            )
+        )
+
+    private fun remoteRole(value: String): StoryAccessRole =
+        when (value.lowercase()) {
+            "owner" -> StoryAccessRole.OWNER
+            "admin" -> StoryAccessRole.ADMIN
+            "editor" -> StoryAccessRole.EDITOR
+            else -> StoryAccessRole.READER
+        }
+
+    private fun CollaboratorPermissions.toDto(): CollaboratorPermissionsDto =
+        CollaboratorPermissionsDto(
+            blocks = blocks.name.lowercase(),
+            lines = lines.name.lowercase(),
+            script = script.name.lowercase(),
+            members = members.name.lowercase(),
+            export = export.name.lowercase()
+        )
+
+    private inline fun <reified T : Enum<T>> enumValueOrDefault(
+        value: String,
+        default: T
+    ): T =
+        runCatching { enumValueOf<T>(value.uppercase()) }
+            .getOrDefault(default)
 
     private fun formattingJson(marks: List<TextFormatMarkDto>): String {
         val array = JSONArray()

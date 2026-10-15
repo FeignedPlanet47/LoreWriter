@@ -44,7 +44,8 @@ def user_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
         email=user.email,
-        displayName=user.display_name,
+        login=user.login,
+        displayName=user.login,
         emailVerified=user.is_verified,
     )
 
@@ -131,7 +132,7 @@ async def create_and_send_verification_code(
         await asyncio.to_thread(
             send_verification_email,
             user.email,
-            user.display_name,
+            user.login,
             raw_code,
         )
     except Exception:
@@ -151,13 +152,20 @@ async def create_and_send_verification_code(
 )
 async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     email = body.email.lower().strip()
-    existing = await db.scalar(select(User).where(User.email == email))
-    if existing:
+    login = body.login.lower().strip()
+
+    existing_email = await db.scalar(select(User).where(User.email == email))
+    if existing_email:
         raise HTTPException(status_code=409, detail="EMAIL_ALREADY_REGISTERED")
+
+    existing_login = await db.scalar(select(User).where(User.login == login))
+    if existing_login:
+        raise HTTPException(status_code=409, detail="LOGIN_ALREADY_REGISTERED")
 
     user = User(
         email=email,
-        display_name=body.displayName.strip(),
+        login=login,
+        display_name=login,
         password_hash=hash_password(body.password),
         is_verified=False,
     )
@@ -173,6 +181,8 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
         await db.commit()
     except IntegrityError:
         await db.rollback()
+        if await db.scalar(select(User).where(User.login == login)):
+            raise HTTPException(status_code=409, detail="LOGIN_ALREADY_REGISTERED")
         raise HTTPException(status_code=409, detail="EMAIL_ALREADY_REGISTERED")
 
     return VerificationPendingResponse(
@@ -284,15 +294,18 @@ async def resend_verification(
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]):
-    email = body.email.lower().strip()
-    user = await db.scalar(select(User).where(User.email == email, User.is_active.is_(True)))
+    login = body.login.lower().strip()
+    user = await db.scalar(select(User).where(User.login == login, User.is_active.is_(True)))
     if not user:
         dummy_verify(body.password)
-        raise HTTPException(status_code=401, detail="INVALID_EMAIL_OR_PASSWORD")
+        raise HTTPException(status_code=401, detail="INVALID_LOGIN_OR_PASSWORD")
     if not verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="INVALID_EMAIL_OR_PASSWORD")
+        raise HTTPException(status_code=401, detail="INVALID_LOGIN_OR_PASSWORD")
     if not user.is_verified:
-        raise HTTPException(status_code=403, detail="EMAIL_NOT_VERIFIED")
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "EMAIL_NOT_VERIFIED", "email": user.email},
+        )
     return await issue_tokens(db, user)
 
 

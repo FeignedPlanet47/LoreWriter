@@ -36,12 +36,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import ru.it.novelforge.domain.model.StoryAccessRole
+import ru.it.novelforge.ui.collaborators.CollaboratorsScreen
 
 private enum class EditorSection {
     GRAPH,
     MANUSCRIPT,
     WORD_DOCUMENT,
-    CHARACTERS
+    CHARACTERS,
+    COLLABORATORS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -153,10 +155,11 @@ fun EditorWorkspaceScreen(
                             if (story.accessRole != StoryAccessRole.OWNER) {
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    text = if (story.accessRole == StoryAccessRole.READER) {
-                                        "Общий доступ: только чтение"
-                                    } else {
-                                        "Общий доступ: редактор"
+                                    text = when (story.accessRole) {
+                                        StoryAccessRole.READER -> "Общий доступ: только чтение"
+                                        StoryAccessRole.EDITOR -> "Общий доступ: редактор"
+                                        StoryAccessRole.ADMIN -> "Общий доступ: админ"
+                                        StoryAccessRole.OWNER -> "Владелец"
                                     },
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary
@@ -336,6 +339,9 @@ fun EditorWorkspaceScreen(
                 EditorScreen(
                     onOpenMenu =
                         ::openDrawer,
+                    onOpenCollaborators = {
+                        section = EditorSection.COLLABORATORS
+                    },
                     onPreview =
                         onPreview,
                     viewModel =
@@ -364,6 +370,14 @@ fun EditorWorkspaceScreen(
                         ::openDrawer,
                     viewModel =
                         viewModel
+                )
+
+            EditorSection.COLLABORATORS ->
+                CollaboratorsScreen(
+                    onBack = {
+                        section = EditorSection.GRAPH
+                    },
+                    viewModel = viewModel
                 )
         }
     }

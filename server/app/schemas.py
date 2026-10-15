@@ -5,13 +5,14 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
-StoryAccessRole = Literal["owner", "editor", "reader"]
+StoryAccessRole = Literal["owner", "admin", "editor", "reader"]
 ShareLinkRole = Literal["editor", "reader"]
 
 
 class UserOut(BaseModel):
     id: UUID
     email: EmailStr
+    login: str
     displayName: str = ""
     emailVerified: bool = True
 
@@ -19,11 +20,11 @@ class UserOut(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=10, max_length=128)
-    displayName: str = Field(default="", max_length=120)
+    login: str = Field(min_length=3, max_length=32, pattern=r"^[\w.-]+$")
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    login: str = Field(min_length=3, max_length=32, pattern=r"^[\w.-]+$")
     password: str = Field(min_length=1, max_length=128)
 
 
@@ -128,8 +129,23 @@ class ShareLinkResponse(BaseModel):
     createdAt: datetime
 
 
+class CollaboratorPermissions(BaseModel):
+    blocks: Literal["view", "move", "edit", "full"] = "view"
+    lines: Literal["view", "move", "edit", "full"] = "view"
+    script: Literal["read", "edit", "full"] = "read"
+    members: Literal["none", "invite", "manage", "full"] = "none"
+    export: Literal["none", "export", "share"] = "none"
+
+
+class UpdateCollaboratorRequest(BaseModel):
+    role: Literal["admin", "editor", "reader"]
+    permissions: CollaboratorPermissions
+
+
 class CollaboratorResponse(BaseModel):
     userId: UUID
     email: EmailStr
+    login: str
     displayName: str
-    role: ShareLinkRole
+    role: StoryAccessRole
+    permissions: CollaboratorPermissions

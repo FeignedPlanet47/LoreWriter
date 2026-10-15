@@ -11,14 +11,23 @@ services:
       retries: 20
     restart: unless-stopped
 
+  migrate:
+    build: .
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build: .
     env_file: .env
     expose:
       - "8000"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   caddy:

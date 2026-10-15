@@ -17,6 +17,7 @@ data class TextFormatMark(
 
 enum class StoryAccessRole {
     OWNER,
+    ADMIN,
     EDITOR,
     READER;
 
@@ -26,6 +27,88 @@ enum class StoryAccessRole {
     val canShare: Boolean
         get() = this == OWNER
 }
+
+enum class BlockAccessLevel {
+    VIEW,
+    MOVE,
+    EDIT,
+    FULL
+}
+
+enum class LineAccessLevel {
+    VIEW,
+    MOVE,
+    EDIT,
+    FULL
+}
+
+enum class ScriptAccessLevel {
+    READ,
+    EDIT,
+    FULL
+}
+
+enum class MemberAccessLevel {
+    NONE,
+    INVITE,
+    MANAGE,
+    FULL
+}
+
+enum class ExportAccessLevel {
+    NONE,
+    EXPORT,
+    SHARE
+}
+
+data class CollaboratorPermissions(
+    val blocks: BlockAccessLevel = BlockAccessLevel.VIEW,
+    val lines: LineAccessLevel = LineAccessLevel.VIEW,
+    val script: ScriptAccessLevel = ScriptAccessLevel.READ,
+    val members: MemberAccessLevel = MemberAccessLevel.NONE,
+    val export: ExportAccessLevel = ExportAccessLevel.NONE
+)
+
+data class StoryCollaborator(
+    val userId: String,
+    val email: String,
+    val displayName: String = "",
+    val role: StoryAccessRole,
+    val permissions: CollaboratorPermissions
+) {
+    val visibleName: String
+        get() = displayName.ifBlank { email.substringBefore("@").ifBlank { email } }
+}
+
+fun defaultPermissionsFor(role: StoryAccessRole): CollaboratorPermissions =
+    when (role) {
+        StoryAccessRole.OWNER -> CollaboratorPermissions(
+            blocks = BlockAccessLevel.FULL,
+            lines = LineAccessLevel.FULL,
+            script = ScriptAccessLevel.FULL,
+            members = MemberAccessLevel.FULL,
+            export = ExportAccessLevel.SHARE
+        )
+
+        StoryAccessRole.ADMIN -> CollaboratorPermissions(
+            blocks = BlockAccessLevel.FULL,
+            lines = LineAccessLevel.FULL,
+            script = ScriptAccessLevel.FULL,
+            members = MemberAccessLevel.MANAGE,
+            export = ExportAccessLevel.SHARE
+        )
+
+        StoryAccessRole.EDITOR -> CollaboratorPermissions(
+            blocks = BlockAccessLevel.EDIT,
+            lines = LineAccessLevel.EDIT,
+            script = ScriptAccessLevel.EDIT,
+            members = MemberAccessLevel.NONE,
+            export = ExportAccessLevel.EXPORT
+        )
+
+        StoryAccessRole.READER -> CollaboratorPermissions()
+    }
+
 
 enum class NodeType {
     START,

@@ -20,6 +20,9 @@ import ru.it.novelforge.domain.usecase.DeleteStoryUseCase
 import ru.it.novelforge.domain.usecase.ExportStoryJsonUseCase
 import ru.it.novelforge.domain.usecase.ExportStoryTextUseCase
 import ru.it.novelforge.domain.usecase.GetStoryGraphUseCase
+import ru.it.novelforge.domain.usecase.RemoveStoryCollaboratorUseCase
+import ru.it.novelforge.domain.usecase.UpdateStoryCollaboratorUseCase
+import ru.it.novelforge.domain.usecase.GetStoryCollaboratorsUseCase
 import ru.it.novelforge.domain.usecase.ObserveStoriesUseCase
 import ru.it.novelforge.domain.usecase.ObserveStoryGraphUseCase
 import ru.it.novelforge.domain.usecase.StoryUseCases
@@ -52,6 +55,9 @@ object UseCaseModule {
         deleteConnection = DeleteConnectionUseCase(repository),
         createShareLink = CreateStoryShareLinkUseCase(repository),
         acceptShareLink = AcceptStoryShareLinkUseCase(repository),
+        getCollaborators = GetStoryCollaboratorsUseCase(repository),
+        updateCollaborator = UpdateStoryCollaboratorUseCase(repository),
+        removeCollaborator = RemoveStoryCollaboratorUseCase(repository),
         syncStories = SyncStoriesUseCase(repository),
         validateStory = ValidateStoryUseCase(),
         exportText = ExportStoryTextUseCase(),

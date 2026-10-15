@@ -12,7 +12,7 @@ interface AuthRepository {
     suspend fun register(
         email: String,
         password: String,
-        displayName: String
+        login: String
     ): RegistrationPending
 
     suspend fun verifyEmail(
@@ -25,7 +25,7 @@ interface AuthRepository {
     ): RegistrationPending
 
     suspend fun login(
-        email: String,
+        login: String,
         password: String
     ): UserAccount
 

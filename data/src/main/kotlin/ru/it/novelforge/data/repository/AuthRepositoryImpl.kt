@@ -16,6 +16,7 @@ import ru.it.novelforge.domain.model.EmailAlreadyRegisteredException
 import ru.it.novelforge.domain.model.EmailDeliveryException
 import ru.it.novelforge.domain.model.EmailVerificationRequiredException
 import ru.it.novelforge.domain.model.InvalidVerificationCodeException
+import ru.it.novelforge.domain.model.LoginAlreadyRegisteredException
 import ru.it.novelforge.domain.model.RegistrationPending
 import ru.it.novelforge.domain.model.UserAccount
 import ru.it.novelforge.domain.model.VerificationAttemptsExceededException
@@ -76,7 +77,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun register(
         email: String,
         password: String,
-        displayName: String
+        login: String
     ): RegistrationPending {
         val normalizedEmail =
             email.trim()
@@ -87,7 +88,7 @@ class AuthRepositoryImpl @Inject constructor(
                     RegisterRequestDto(
                         email = normalizedEmail,
                         password = password,
-                        displayName = displayName.trim()
+                        login = login.trim()
                     )
                 )
 
@@ -155,17 +156,17 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun login(
-        email: String,
+        login: String,
         password: String
     ): UserAccount {
-        val normalizedEmail =
-            email.trim()
+        val normalizedLogin =
+            login.trim()
 
         return try {
             val response =
                 api.login(
                     LoginRequestDto(
-                        email = normalizedEmail,
+                        login = normalizedLogin,
                         password = password
                     )
                 )
@@ -181,7 +182,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             user
         } catch (error: HttpException) {
-            throw error.toAuthException(normalizedEmail)
+            throw error.toAuthException(normalizedLogin)
         }
     }
 
@@ -205,7 +206,7 @@ private fun ru.it.novelforge.data.network.AuthResponseDto.toAccount() =
     UserAccount(
         id = user.id,
         email = user.email,
-        displayName = user.displayName
+        displayName = user.login.ifBlank { user.displayName }
     )
 
 private fun HttpException.toAuthException(
@@ -225,10 +226,15 @@ private fun HttpException.toAuthException(
 
     return when {
         errorBody.contains("EMAIL_NOT_VERIFIED") ->
-            EmailVerificationRequiredException(email)
+            EmailVerificationRequiredException(
+                extractVerificationEmail(errorBody).ifBlank { email }
+            )
 
         errorBody.contains("EMAIL_ALREADY_REGISTERED") ->
             EmailAlreadyRegisteredException()
+
+        errorBody.contains("LOGIN_ALREADY_REGISTERED") ->
+            LoginAlreadyRegisteredException()
 
         errorBody.contains("VERIFICATION_CODE_EXPIRED") ->
             VerificationCodeExpiredException()
@@ -251,3 +257,11 @@ private fun HttpException.toAuthException(
         else -> this
     }
 }
+
+
+private fun extractVerificationEmail(errorBody: String): String =
+    Regex("\"email\"\\s*:\\s*\"([^\"]+)\"")
+        .find(errorBody)
+        ?.groupValues
+        ?.getOrNull(1)
+        .orEmpty()

@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+!.env.mailpit.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.git/
+.idea/
+.DS_Store
+backups/

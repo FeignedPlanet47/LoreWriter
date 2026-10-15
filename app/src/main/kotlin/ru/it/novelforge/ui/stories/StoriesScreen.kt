@@ -88,6 +88,7 @@ fun StoriesScreen(
                     val roleText = when (event.role) {
                         StoryAccessRole.READER -> "читатель"
                         StoryAccessRole.EDITOR -> "редактор"
+                        StoryAccessRole.ADMIN -> "админ"
                         StoryAccessRole.OWNER -> "владелец"
                     }
                     val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -300,6 +301,7 @@ private fun StoryCard(
                 Text(
                     when (story.accessRole) {
                         StoryAccessRole.OWNER -> "Владелец"
+                        StoryAccessRole.ADMIN -> "Общий доступ: админ"
                         StoryAccessRole.EDITOR -> "Общий доступ: редактор"
                         StoryAccessRole.READER -> "Общий доступ: только чтение"
                     },

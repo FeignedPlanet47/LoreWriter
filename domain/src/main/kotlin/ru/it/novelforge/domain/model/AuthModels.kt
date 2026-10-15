@@ -16,6 +16,7 @@ class EmailVerificationRequiredException(
 ) : Exception("Email verification required")
 
 class EmailAlreadyRegisteredException : Exception("Email already registered")
+class LoginAlreadyRegisteredException : Exception("Login already registered")
 class InvalidVerificationCodeException : Exception("Invalid verification code")
 class VerificationCodeExpiredException : Exception("Verification code expired")
 class VerificationAttemptsExceededException : Exception("Verification attempts exceeded")

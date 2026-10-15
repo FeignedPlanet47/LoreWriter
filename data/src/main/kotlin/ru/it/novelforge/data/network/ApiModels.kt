@@ -3,6 +3,7 @@ package ru.it.novelforge.data.network
 data class UserDto(
     val id: String,
     val email: String,
+    val login: String = "",
     val displayName: String = "",
     val emailVerified: Boolean = true
 )
@@ -10,11 +11,11 @@ data class UserDto(
 data class RegisterRequestDto(
     val email: String,
     val password: String,
-    val displayName: String
+    val login: String
 )
 
 data class LoginRequestDto(
-    val email: String,
+    val login: String,
     val password: String
 )
 
@@ -117,4 +118,27 @@ data class ShareLinkResponseDto(
     val role: String,
     val deepLink: String,
     val createdAt: String
+)
+
+
+data class CollaboratorPermissionsDto(
+    val blocks: String,
+    val lines: String,
+    val script: String,
+    val members: String,
+    val export: String
+)
+
+data class CollaboratorResponseDto(
+    val userId: String,
+    val email: String,
+    val login: String = "",
+    val displayName: String = "",
+    val role: String,
+    val permissions: CollaboratorPermissionsDto
+)
+
+data class UpdateCollaboratorRequestDto(
+    val role: String,
+    val permissions: CollaboratorPermissionsDto
 )
