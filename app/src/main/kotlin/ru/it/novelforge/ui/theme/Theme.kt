@@ -7,6 +7,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val LightColors = lightColorScheme()
+
 private val DarkColors = darkColorScheme()
 
 @Composable
@@ -15,7 +16,11 @@ fun NovelForgeTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = if (darkTheme) {
+            DarkColors
+        } else {
+            LightColors
+        },
         typography = AppTypography,
         content = content
     )

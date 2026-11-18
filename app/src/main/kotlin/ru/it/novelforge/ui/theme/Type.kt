@@ -8,103 +8,107 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import ru.it.novelforge.R
 
-val InterFontFamily = FontFamily(
+val RalewayFontFamily = FontFamily(
     Font(
-        resId = R.font.inter_regular,
+        resId = R.font.raleway_regular,
         weight = FontWeight.Normal
     ),
     Font(
-        resId = R.font.inter_medium,
+        resId = R.font.raleway_medium,
         weight = FontWeight.Medium
     ),
     Font(
-        resId = R.font.inter_18pt_bold,
+        resId = R.font.raleway_semi_bold,
         weight = FontWeight.SemiBold
+    ),
+    Font(
+        resId = R.font.raleway_bold,
+        weight = FontWeight.Bold
     )
 )
 
 val AppTypography = Typography(
 
     displayLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 44.sp
     ),
 
     displayMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Medium,
+        fontFamily = RalewayFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 36.sp
     ),
 
     headlineLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 32.sp
     ),
 
     headlineMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 28.sp
     ),
 
     headlineSmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 24.sp
     ),
 
     titleLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 22.sp
     ),
 
     titleMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp
     ),
 
     titleSmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp
     ),
 
     bodyLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp
     ),
 
     bodyMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp
     ),
 
     bodySmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp
     ),
 
     labelLarge = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp
     ),
 
     labelMedium = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp
     ),
 
     labelSmall = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = RalewayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp
     )

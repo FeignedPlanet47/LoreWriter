@@ -7,9 +7,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +61,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,9 +73,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
@@ -88,6 +94,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.IOException
 import kotlin.math.roundToInt
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 import kotlinx.coroutines.launch
 import ru.it.novelforge.domain.model.NodeType
@@ -110,10 +118,12 @@ import ru.it.novelforge.ui.common.toggleTextMark
 import ru.it.novelforge.ui.CollaboratorBubbles
 import ru.it.novelforge.ui.collaborators.CollaboratorBubbles
 
-private const val CANVAS_WIDTH_DP = 2600f
-private const val CANVAS_HEIGHT_DP = 1900f
 private const val NODE_WIDTH_DP = 240f
 private const val NODE_HEIGHT_DP = 150f
+
+private const val CANVAS_PADDING_DP = 320f
+private const val MAX_CANVAS_SCALE = 2.5f
+private const val ABSOLUTE_MIN_CANVAS_SCALE = 0.01f
 
 private const val MODE_DIVIDER_LEFT_DP = 80f
 private const val MODE_DIVIDER_WIDTH_DP = 2200f
@@ -593,6 +603,10 @@ private fun StoryGraphCanvas(
     val verticalScroll =
         rememberScrollState()
 
+    var scale by remember {
+        mutableFloatStateOf(1f)
+    }
+
     val positions =
         remember {
             mutableStateMapOf<
@@ -644,8 +658,7 @@ private fun StoryGraphCanvas(
         }
     }
 
-    Box(
-
+    BoxWithConstraints(
         modifier =
             modifier
                 .background(
@@ -656,106 +669,26 @@ private fun StoryGraphCanvas(
                             alpha = 0.35f
                         )
                 )
-                .horizontalScroll(
-                    horizontalScroll
-                )
-                .verticalScroll(
-                    verticalScroll
-                )
-
     ) {
 
-        Box(
-            modifier =
-                Modifier.size(
-                    CANVAS_WIDTH_DP.dp,
-                    CANVAS_HEIGHT_DP.dp
-                )
-        ) {
-
-            Canvas(
-                modifier =
-                    Modifier.fillMaxSize()
-            ) {
-
-                graph.connections.forEach { connection ->
-
-                    val fromNode =
-                        graph.nodeById(
-                            connection.fromNodeId
-                        )
-
-                    val toNode =
-                        graph.nodeById(
-                            connection.toNodeId
-                        )
-
-                    if (
-                        fromNode?.type == NodeType.MODE_DIVIDER ||
-                        toNode?.type == NodeType.MODE_DIVIDER
-                    ) {
-                        return@forEach
-                    }
-
-                    val from =
-                        positions[
-                            connection.fromNodeId
-                        ]
-                            ?: return@forEach
-
-                    val to =
-                        positions[
-                            connection.toNodeId
-                        ]
-                            ?: return@forEach
-
-                    val start =
-                        Offset(
-
-                            x =
-                                (
-                                        from.x +
-                                                NODE_WIDTH_DP
-                                        ) *
-                                        density.density,
-
-                            y =
-                                (
-                                        from.y +
-                                                NODE_HEIGHT_DP /
-                                                2f
-                                        ) *
-                                        density.density
-                        )
-
-                    val end =
-                        Offset(
-
-                            x =
-                                to.x *
-                                        density.density,
-
-                            y =
-                                (
-                                        to.y +
-                                                NODE_HEIGHT_DP /
-                                                2f
-                                        ) *
-                                        density.density
-                        )
-
-                    drawArrowConnection(
-                        start = start,
-                        end = end,
-                        color = connectionColor,
-                        strokeWidth = CONNECTION_STROKE_WIDTH,
-                        arrowHeadLength = CONNECTION_HEAD_LENGTH_DP * density.density,
-                        arrowHeadWidth = CONNECTION_HEAD_WIDTH_DP * density.density
-                    )
-                }
+        val viewportWidthDp =
+            with(density) {
+                constraints
+                    .maxWidth
+                    .toDp()
+                    .value
             }
 
-            graph.nodes.forEach { node ->
+        val viewportHeightDp =
+            with(density) {
+                constraints
+                    .maxHeight
+                    .toDp()
+                    .value
+            }
+
+        val furthestNodeRight =
+            graph.nodes.maxOfOrNull { node ->
 
                 val position =
                     positions[node.id]
@@ -765,72 +698,333 @@ private fun StoryGraphCanvas(
                         )
 
                 if (node.type == NodeType.MODE_DIVIDER) {
-
-                    ModeDivider(
-                        node = node,
-                        position = position,
-                        onPositionChange = { updated ->
-                            positions[node.id] = updated
-                        },
-                        onPositionCommitted = { committed ->
-                            onMoveNode(
-                                node.id,
-                                MODE_DIVIDER_LEFT_DP,
-                                committed.y
+                    MODE_DIVIDER_LEFT_DP +
+                            max(
+                                NODE_WIDTH_DP,
+                                viewportWidthDp
                             )
-                        },
-                        onClick = {
-                            onNodeClick(node)
-                        }
-                    )
-
                 } else {
+                    position.x +
+                            NODE_WIDTH_DP
+                }
+            }
+                ?: NODE_WIDTH_DP
 
-                    GraphNodeCard(
+        val furthestNodeBottom =
+            graph.nodes.maxOfOrNull { node ->
 
-                        node =
-                            node,
+                val position =
+                    positions[node.id]
+                        ?: Offset(
+                            node.positionX,
+                            node.positionY
+                        )
 
-                        outgoingCount =
-                            graph
-                                .outgoing(
-                                    node.id
+                position.y +
+                        if (node.type == NodeType.MODE_DIVIDER) {
+                            MODE_DIVIDER_HEIGHT_DP
+                        } else {
+                            NODE_HEIGHT_DP
+                        }
+            }
+                ?: NODE_HEIGHT_DP
+
+        val canvasWidthDp =
+            max(
+                viewportWidthDp,
+                furthestNodeRight +
+                        CANVAS_PADDING_DP
+            )
+
+        val canvasHeightDp =
+            max(
+                viewportHeightDp,
+                furthestNodeBottom +
+                        CANVAS_PADDING_DP
+            )
+
+        val fitScale =
+            min(
+                viewportWidthDp /
+                        canvasWidthDp,
+                viewportHeightDp /
+                        canvasHeightDp
+            )
+                .coerceAtMost(1f)
+                .coerceAtLeast(
+                    ABSOLUTE_MIN_CANVAS_SCALE
+                )
+
+        LaunchedEffect(
+            fitScale
+        ) {
+            if (scale < fitScale) {
+                scale = fitScale
+            }
+        }
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(
+                        fitScale
+                    ) {
+                        awaitPointerEventScope {
+
+                            while (true) {
+
+                                val event =
+                                    awaitPointerEvent(
+                                        PointerEventPass.Initial
+                                    )
+
+                                val pressedPointers =
+                                    event.changes.count {
+                                        it.pressed
+                                    }
+
+                                if (pressedPointers >= 2) {
+
+                                    val zoomChange =
+                                        event.calculateZoom()
+
+                                    if (
+                                        zoomChange.isFinite() &&
+                                        zoomChange > 0f &&
+                                        zoomChange != 1f
+                                    ) {
+
+                                        scale =
+                                            (
+                                                    scale *
+                                                            zoomChange
+                                                    )
+                                                .coerceIn(
+                                                    fitScale,
+                                                    MAX_CANVAS_SCALE
+                                                )
+                                    }
+
+                                    event.changes.forEach {
+                                        it.consume()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .horizontalScroll(
+                        horizontalScroll
+                    )
+                    .verticalScroll(
+                        verticalScroll
+                    )
+        ) {
+
+            Box(
+                modifier =
+                    Modifier.size(
+                        width =
+                            (
+                                    canvasWidthDp *
+                                            scale
+                                    ).dp,
+                        height =
+                            (
+                                    canvasHeightDp *
+                                            scale
+                                    ).dp
+                    )
+            ) {
+
+                Box(
+                    modifier =
+                        Modifier
+                            .size(
+                                width =
+                                    canvasWidthDp.dp,
+                                height =
+                                    canvasHeightDp.dp
+                            )
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin =
+                                    TransformOrigin(
+                                        pivotFractionX = 0f,
+                                        pivotFractionY = 0f
+                                    )
+                            }
+                ) {
+
+                    Canvas(
+                        modifier =
+                            Modifier.fillMaxSize()
+                    ) {
+
+                        graph.connections.forEach { connection ->
+
+                            val fromNode =
+                                graph.nodeById(
+                                    connection.fromNodeId
                                 )
-                                .count { connection ->
-                                    graph.nodeById(connection.toNodeId)?.type !=
-                                            NodeType.MODE_DIVIDER
+
+                            val toNode =
+                                graph.nodeById(
+                                    connection.toNodeId
+                                )
+
+                            if (
+                                fromNode?.type == NodeType.MODE_DIVIDER ||
+                                toNode?.type == NodeType.MODE_DIVIDER
+                            ) {
+                                return@forEach
+                            }
+
+                            val from =
+                                positions[
+                                    connection.fromNodeId
+                                ]
+                                    ?: return@forEach
+
+                            val to =
+                                positions[
+                                    connection.toNodeId
+                                ]
+                                    ?: return@forEach
+
+                            val start =
+                                Offset(
+
+                                    x =
+                                        (
+                                                from.x +
+                                                        NODE_WIDTH_DP
+                                                ) *
+                                                density.density,
+
+                                    y =
+                                        (
+                                                from.y +
+                                                        NODE_HEIGHT_DP /
+                                                        2f
+                                                ) *
+                                                density.density
+                                )
+
+                            val end =
+                                Offset(
+
+                                    x =
+                                        to.x *
+                                                density.density,
+
+                                    y =
+                                        (
+                                                to.y +
+                                                        NODE_HEIGHT_DP /
+                                                        2f
+                                                ) *
+                                                density.density
+                                )
+
+                            drawArrowConnection(
+                                start = start,
+                                end = end,
+                                color = connectionColor,
+                                strokeWidth = CONNECTION_STROKE_WIDTH,
+                                arrowHeadLength = CONNECTION_HEAD_LENGTH_DP * density.density,
+                                arrowHeadWidth = CONNECTION_HEAD_WIDTH_DP * density.density
+                            )
+                        }
+                    }
+
+                    graph.nodes.forEach { node ->
+
+                        val position =
+                            positions[node.id]
+                                ?: Offset(
+                                    node.positionX,
+                                    node.positionY
+                                )
+
+                        if (node.type == NodeType.MODE_DIVIDER) {
+
+                            ModeDivider(
+                                node = node,
+                                position = position,
+                                canvasWidthDp = canvasWidthDp,
+                                canvasHeightDp = canvasHeightDp,
+                                onPositionChange = { updated ->
+                                    positions[node.id] = updated
+                                },
+                                onPositionCommitted = { committed ->
+                                    onMoveNode(
+                                        node.id,
+                                        MODE_DIVIDER_LEFT_DP,
+                                        committed.y
+                                    )
+                                },
+                                onClick = {
+                                    onNodeClick(node)
+                                }
+                            )
+
+                        } else {
+
+                            GraphNodeCard(
+
+                                node =
+                                    node,
+
+                                outgoingCount =
+                                    graph
+                                        .outgoing(
+                                            node.id
+                                        )
+                                        .count { connection ->
+                                            graph.nodeById(connection.toNodeId)?.type !=
+                                                    NodeType.MODE_DIVIDER
+                                        },
+
+                                position =
+                                    position,
+
+                                canvasWidthDp =
+                                    canvasWidthDp,
+
+                                canvasHeightDp =
+                                    canvasHeightDp,
+
+                                onPositionChange = {
+                                    positions[node.id] =
+                                        it
                                 },
 
-                        position =
-                            position,
+                                onPositionCommitted = { committed ->
 
-                        onPositionChange = {
+                                    onMoveNode(
 
-                            positions[node.id] =
-                                it
-                        },
+                                        node.id,
 
-                        onPositionCommitted = { committed ->
+                                        committed.x,
 
-                            onMoveNode(
+                                        committed.y
+                                    )
+                                },
 
-                                node.id,
-
-                                committed.x,
-
-                                committed.y
+                                onClick = {
+                                    onNodeClick(node)
+                                }
                             )
-                        },
-
-                        onClick = {
-                            onNodeClick(node)
                         }
-                    )
+                    }
                 }
             }
         }
     }
 }
+
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrowConnection(
     start: Offset,
@@ -891,6 +1085,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrowConnection
 private fun ModeDivider(
     node: StoryNode,
     position: Offset,
+    canvasWidthDp: Float,
+    canvasHeightDp: Float,
     onPositionChange: (Offset) -> Unit,
     onPositionCommitted: (Offset) -> Unit,
     onClick: () -> Unit
@@ -916,8 +1112,14 @@ private fun ModeDivider(
                     )
                 }
                 .size(
-                    MODE_DIVIDER_WIDTH_DP.dp,
-                    MODE_DIVIDER_HEIGHT_DP.dp
+                    width =
+                        max(
+                            NODE_WIDTH_DP,
+                            canvasWidthDp -
+                                    MODE_DIVIDER_LEFT_DP * 2f
+                        ).dp,
+                    height =
+                        MODE_DIVIDER_HEIGHT_DP.dp
                 )
                 .pointerInput(node.id) {
 
@@ -952,7 +1154,7 @@ private fun ModeDivider(
                                                     density.density
                                             ).coerceIn(
                                             0f,
-                                            CANVAS_HEIGHT_DP -
+                                            canvasHeightDp -
                                                     MODE_DIVIDER_HEIGHT_DP
                                         )
                                 )
@@ -1035,6 +1237,8 @@ private fun GraphNodeCard(
     node: StoryNode,
     outgoingCount: Int,
     position: Offset,
+    canvasWidthDp: Float,
+    canvasHeightDp: Float,
     onPositionChange: (Offset) -> Unit,
     onPositionCommitted: (Offset) -> Unit,
     onClick: () -> Unit
@@ -1111,7 +1315,7 @@ private fun GraphNodeCard(
                                                 )
                                             .coerceIn(
                                                 0f,
-                                                CANVAS_WIDTH_DP -
+                                                canvasWidthDp -
                                                         NODE_WIDTH_DP
                                             ),
 
@@ -1123,7 +1327,7 @@ private fun GraphNodeCard(
                                                 )
                                             .coerceIn(
                                                 0f,
-                                                CANVAS_HEIGHT_DP -
+                                                canvasHeightDp -
                                                         NODE_HEIGHT_DP
                                             )
                                 )
