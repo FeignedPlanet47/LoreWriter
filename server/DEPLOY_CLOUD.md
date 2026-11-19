@@ -1,4 +1,4 @@
-# Развертывание NovelForge backend в облаке
+# Развертывание LoreWriter backend в облаке
 
 Backend уже использует настоящую PostgreSQL, FastAPI, Alembic-миграции, JWT, Argon2id, подтверждение email по SMTP и общий доступ к историям.
 
@@ -23,7 +23,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 - Caddy слушает 80/443 и автоматически получает TLS-сертификат;
 - FastAPI доступен только через Caddy;
 - PostgreSQL не публикуется наружу;
-- данные PostgreSQL хранятся в Docker volume `novelforge_pgdata`.
+- данные PostgreSQL хранятся в Docker volume `lorewriter_pgdata`.
 
 В `.env` обязательно задайте:
 
@@ -113,7 +113,7 @@ cd server
 
 ```bash
 cd server
-./scripts/restore_postgres.sh backups/novelforge_YYYYMMDD_HHMMSS.sql.gz
+./scripts/restore_postgres.sh backups/lorewriter_YYYYMMDD_HHMMSS.sql.gz
 ```
 
 Если используется managed PostgreSQL, лучше включить автоматические backup/PITR средствами облачного провайдера.

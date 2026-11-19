@@ -234,7 +234,7 @@ async def create_share_link(
     return ShareLinkResponse(
         id=link.id,
         role=link.role,
-        deepLink=f"novelforge://share/{token}",
+        deepLink=f"lorewriter://share/{token}",
         createdAt=link.created_at,
     )
 

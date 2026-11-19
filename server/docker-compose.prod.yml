@@ -3,7 +3,7 @@ services:
     image: postgres:17-alpine
     env_file: .env
     volumes:
-      - novelforge_pgdata:/var/lib/postgresql/data
+      - lorewriter_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -47,6 +47,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  novelforge_pgdata:
+  lorewriter_pgdata:
   caddy_data:
   caddy_config:

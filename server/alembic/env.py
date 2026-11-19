@@ -34,8 +34,8 @@ def _migration_database_url() -> str:
         return _to_sync_url(runtime_url)
 
     # Local Docker PostgreSQL fallback.
-    db = os.getenv("POSTGRES_DB", "novelforge")
-    user = quote_plus(os.getenv("POSTGRES_USER", "novelforge"))
+    db = os.getenv("POSTGRES_DB", "lorewriter")
+    user = quote_plus(os.getenv("POSTGRES_USER", "lorewriter"))
     password = quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
     host = os.getenv("POSTGRES_HOST", "db")
     port = int(os.getenv("POSTGRES_PORT", "5432"))

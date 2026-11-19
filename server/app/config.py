@@ -7,19 +7,19 @@ from sqlalchemy.engine import make_url
 
 class Settings(BaseSettings):
     # Local/self-hosted PostgreSQL fallback.
-    postgres_db: str = "novelforge"
-    postgres_user: str = "novelforge"
+    postgres_db: str = "lorewriter"
+    postgres_user: str = "lorewriter"
     postgres_password: str = Field(default="", min_length=0)
     postgres_host: str = "db"
     postgres_port: int = 5432
 
     # Runtime database URL. In production this MUST use the restricted
-    # novelforge_app role, not the database owner.
+    # lorewriter_app role, not the database owner.
     external_database_url: str = Field(default="", validation_alias="DATABASE_URL")
 
     jwt_secret: str = Field(min_length=64)
-    jwt_issuer: str = "novelforge-api"
-    jwt_audience: str = "novelforge-android"
+    jwt_issuer: str = "lorewriter-api"
+    jwt_audience: str = "lorewriter-android"
     environment: str = "development"
     access_token_minutes: int = Field(default=15, ge=5, le=60)
     refresh_token_days: int = Field(default=30, ge=1, le=90)
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from_email: str = Field(min_length=3)
-    smtp_from_name: str = "NovelForge"
+    smtp_from_name: str = "LoreWriter"
     smtp_use_tls: bool = True
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = Field(default=15, ge=5, le=60)

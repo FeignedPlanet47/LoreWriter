@@ -9,7 +9,7 @@ from .stories import router as stories_router
 is_development = settings.environment.lower() == "development"
 
 app = FastAPI(
-    title="NovelForge API",
+    title="LoreWriter API",
     version="1.3.0",
     docs_url="/docs" if is_development else None,
     openapi_url="/openapi.json" if is_development else None,

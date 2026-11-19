@@ -1,6 +1,6 @@
-# NovelForge Server
+# LoreWriter Server
 
-FastAPI + PostgreSQL backend для аккаунтов и синхронизации NovelForge.
+FastAPI + PostgreSQL backend для аккаунтов и синхронизации LoreWriter.
 
 ## 1. Настройка
 
@@ -187,7 +187,7 @@ SMTP_PORT=587
 SMTP_USERNAME=no-reply@example.com
 SMTP_PASSWORD=your_generated_smtp_password
 SMTP_FROM_EMAIL=no-reply@example.com
-SMTP_FROM_NAME=NovelForge
+SMTP_FROM_NAME=LoreWriter
 SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 ```

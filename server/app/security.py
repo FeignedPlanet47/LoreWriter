@@ -12,7 +12,7 @@ from pwdlib import PasswordHash
 from .config import settings
 
 password_hasher = PasswordHash.recommended()
-DUMMY_HASH = password_hasher.hash("NovelForge-dummy-password")
+DUMMY_HASH = password_hasher.hash("LoreWriter-dummy-password")
 ALGORITHM = "HS256"
 
 

@@ -9,16 +9,16 @@ from .config import settings
 
 def send_verification_email(email: str, display_name: str, code: str) -> None:
     message = EmailMessage()
-    message["Subject"] = "Подтверждение email в NovelForge"
+    message["Subject"] = "Подтверждение email в LoreWriter"
     message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_email))
     message["To"] = email
 
     greeting = f", {display_name.strip()}" if display_name.strip() else ""
     message.set_content(
         f"Здравствуйте{greeting}!\n\n"
-        f"Код подтверждения NovelForge: {code}\n\n"
+        f"Код подтверждения LoreWriter: {code}\n\n"
         f"Код действует {settings.email_verification_code_minutes} минут.\n"
-        "Если вы не регистрировались в NovelForge, просто проигнорируйте это письмо.\n"
+        "Если вы не регистрировались в LoreWriter, просто проигнорируйте это письмо.\n"
     )
 
     safe_name = escape(display_name.strip())
@@ -27,13 +27,13 @@ def send_verification_email(email: str, display_name: str, code: str) -> None:
         f"""
         <html>
           <body style="font-family:Arial,sans-serif;color:#1c2340;line-height:1.5">
-            <h2 style="margin-bottom:8px">NovelForge</h2>
+            <h2 style="margin-bottom:8px">LoreWriter</h2>
             <p>Здравствуйте{html_greeting}!</p>
             <p>Ваш код подтверждения:</p>
             <div style="font-size:32px;font-weight:700;letter-spacing:8px;margin:18px 0">{code}</div>
             <p>Код действует {settings.email_verification_code_minutes} минут.</p>
             <p style="color:#6b7280;font-size:13px">
-              Если вы не регистрировались в NovelForge, просто проигнорируйте это письмо.
+              Если вы не регистрировались в LoreWriter, просто проигнорируйте это письмо.
             </p>
           </body>
         </html>

@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "ru.it.novelforge"
+    namespace = "ru.it.lorewriter"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "ru.it.novelforge"
+        applicationId = "ru.it.lorewriter"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

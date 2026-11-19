@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NovelForge"
+rootProject.name = "LoreWriter"
 include(":app")
 include(":domain")
 include(":data")

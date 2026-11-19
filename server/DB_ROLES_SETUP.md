@@ -1,21 +1,21 @@
-# NovelForge: separate DB roles
+# LoreWriter: separate DB roles
 
 ## Runtime API
 
 `server/.env` must contain the Neon connection string for the restricted role:
 
 ```env
-DATABASE_URL=postgresql://novelforge_app:...@.../novelforge?sslmode=require
+DATABASE_URL=postgresql://lorewriter_app:...@.../lorewriter?sslmode=require
 ```
 
 FastAPI uses only this URL.
 
 ## Alembic migrations
 
-Create `server/.env.migrations` from `.env.migrations.example` and paste the Neon connection string for `novelforge_owner`:
+Create `server/.env.migrations` from `.env.migrations.example` and paste the Neon connection string for `lorewriter_owner`:
 
 ```env
-DATABASE_MIGRATION_URL=postgresql://novelforge_owner:...@.../novelforge?sslmode=require
+DATABASE_MIGRATION_URL=postgresql://lorewriter_owner:...@.../lorewriter?sslmode=require
 ```
 
 The API container does not load `.env.migrations`.
@@ -40,4 +40,4 @@ The one-shot `migrate` service upgrades the schema first. Only after it exits su
 
 ## Security
 
-Never commit `.env` or `.env.migrations`. `novelforge_app` has DML privileges but no schema CREATE privilege. `novelforge_owner` is reserved for schema migrations.
+Never commit `.env` or `.env.migrations`. `lorewriter_app` has DML privileges but no schema CREATE privilege. `lorewriter_owner` is reserved for schema migrations.

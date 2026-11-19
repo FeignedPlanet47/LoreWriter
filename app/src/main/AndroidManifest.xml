@@ -2,14 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:name=".NovelForgeApplication"
+        android:name=".LoreWriterApplication"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:label="LoreWriter"
         android:supportsRtl="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/Theme.NovelForge">
+        android:theme="@style/Theme.LoreWriter">
         <activity
             android:name=".MainActivity"
             android:exported="true">

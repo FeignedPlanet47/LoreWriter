@@ -1,4 +1,4 @@
-# NovelForge: подтверждение email
+# LoreWriter: подтверждение email
 
 ## Что добавлено
 
@@ -43,7 +43,7 @@ docker compose up --build
 http://localhost:8025
 ```
 
-Там будет письмо NovelForge с кодом.
+Там будет письмо LoreWriter с кодом.
 
 ## Production
 

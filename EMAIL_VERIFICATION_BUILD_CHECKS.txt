@@ -1,4 +1,4 @@
-NovelForge email verification - checks performed
+LoreWriter email verification - checks performed
 
 1. Python syntax:
    python -m compileall app alembic

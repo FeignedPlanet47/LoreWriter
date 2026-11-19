@@ -17,11 +17,11 @@ def main() -> None:
         raise SystemExit(2)
 
     message = EmailMessage()
-    message["Subject"] = "NovelForge: тест отправки почты"
+    message["Subject"] = "LoreWriter: тест отправки почты"
     message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_email))
     message["To"] = recipient
     message.set_content(
-        "Это тестовое письмо NovelForge.\n\n"
+        "Это тестовое письмо LoreWriter.\n\n"
         "Если вы получили его, сервер успешно отправляет письма через реальный SMTP.\n"
     )
     send_message(message)

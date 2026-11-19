@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "ru.it.novelforge.data"
+    namespace = "ru.it.lorewriter.data"
     compileSdk = 36
 
     defaultConfig {
