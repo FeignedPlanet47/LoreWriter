@@ -115,6 +115,7 @@ import ru.it.lorewriter.ui.common.clearTextFormatting
 import ru.it.lorewriter.ui.common.parseHexColor
 import ru.it.lorewriter.ui.common.rememberSpellCheckState
 import ru.it.lorewriter.ui.common.toggleTextMark
+import ru.it.lorewriter.ui.CollaboratorBubbles
 import ru.it.lorewriter.ui.collaborators.CollaboratorBubbles
 
 private const val NODE_WIDTH_DP = 240f
@@ -892,37 +893,47 @@ private fun StoryGraphCanvas(
                                 ]
                                     ?: return@forEach
 
+                            val targetIsBelow =
+                                to.y >= from.y
+
                             val start =
                                 Offset(
-
                                     x =
                                         (
                                                 from.x +
-                                                        NODE_WIDTH_DP
+                                                        NODE_WIDTH_DP /
+                                                        2f
                                                 ) *
                                                 density.density,
-
                                     y =
                                         (
-                                                from.y +
-                                                        NODE_HEIGHT_DP /
-                                                        2f
+                                                if (targetIsBelow) {
+                                                    from.y +
+                                                            NODE_HEIGHT_DP
+                                                } else {
+                                                    from.y
+                                                }
                                                 ) *
                                                 density.density
                                 )
 
                             val end =
                                 Offset(
-
                                     x =
-                                        to.x *
+                                        (
+                                                to.x +
+                                                        NODE_WIDTH_DP /
+                                                        2f
+                                                ) *
                                                 density.density,
-
                                     y =
                                         (
-                                                to.y +
-                                                        NODE_HEIGHT_DP /
-                                                        2f
+                                                if (targetIsBelow) {
+                                                    to.y
+                                                } else {
+                                                    to.y +
+                                                            NODE_HEIGHT_DP
+                                                }
                                                 ) *
                                                 density.density
                                 )
