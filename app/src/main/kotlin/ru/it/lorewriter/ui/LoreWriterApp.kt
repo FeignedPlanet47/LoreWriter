@@ -40,6 +40,8 @@ fun LoreWriterApp(
 ) {
     val authState by authViewModel.state.collectAsStateWithLifecycle()
 
+    val pendingShareToken = extractShareToken(deepLink)
+
     when {
         authState.initializing -> {
             Box(
@@ -71,7 +73,7 @@ fun LoreWriterApp(
         else -> {
             AuthenticatedLoreWriterApp(
                 user = checkNotNull(authState.user),
-                pendingShareToken = extractShareToken(deepLink),
+                pendingShareToken = pendingShareToken,
                 onShareTokenConsumed = onDeepLinkConsumed,
                 onLogout = authViewModel::logout
             )
@@ -96,11 +98,11 @@ private fun AuthenticatedLoreWriterApp(
             StoriesScreen(
                 user = user,
                 onLogout = onLogout,
+                onOpenStory = { storyId ->
+                    navController.navigate(Routes.editor(storyId))
+                },
                 pendingShareToken = pendingShareToken,
-                onShareTokenConsumed = onShareTokenConsumed,
-                onOpenStory = {
-                    navController.navigate(Routes.editor(it))
-                }
+                onShareTokenConsumed = onShareTokenConsumed
             )
         }
 
@@ -113,7 +115,9 @@ private fun AuthenticatedLoreWriterApp(
             )
         ) {
             EditorWorkspaceScreen(
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    navController.popBackStack()
+                },
                 onPreview = { storyId ->
                     navController.navigate(Routes.preview(storyId))
                 }
@@ -129,21 +133,43 @@ private fun AuthenticatedLoreWriterApp(
             )
         ) {
             PreviewScreen(
-                onBack = { navController.popBackStack() }
+                onBack = {
+                    navController.popBackStack()
+                }
             )
         }
     }
 }
 
 private fun extractShareToken(deepLink: String?): String? {
-    if (deepLink.isNullOrBlank()) return null
+    if (deepLink.isNullOrBlank()) {
+        return null
+    }
 
-    return runCatching {
-        val uri = Uri.parse(deepLink)
-        if (uri.scheme != "lorewriter" || uri.host != "share") {
-            null
-        } else {
-            uri.pathSegments.firstOrNull()?.takeIf { it.length >= 20 }
+    val uri = runCatching {
+        Uri.parse(deepLink)
+    }.getOrNull() ?: return null
+
+    return when {
+        uri.scheme.equals("https", ignoreCase = true) &&
+                uri.host.equals("lorewriter.net", ignoreCase = true) &&
+                uri.pathSegments.firstOrNull() == "share" -> {
+
+            uri.pathSegments
+                .getOrNull(1)
+                ?.trim()
+                ?.takeIf { it.length >= 20 }
         }
-    }.getOrNull()
+
+        uri.scheme.equals("novelforge", ignoreCase = true) &&
+                uri.host.equals("share", ignoreCase = true) -> {
+
+            uri.pathSegments
+                .firstOrNull()
+                ?.trim()
+                ?.takeIf { it.length >= 20 }
+        }
+
+        else -> null
+    }
 }

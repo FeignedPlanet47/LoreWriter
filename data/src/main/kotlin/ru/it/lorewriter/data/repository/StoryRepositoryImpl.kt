@@ -326,10 +326,14 @@ class StoryRepositoryImpl @Inject constructor(
             "История еще не синхронизирована с сервером"
         }
 
-        return storyApi.createShareLink(
+        val response = storyApi.createShareLink(
             storyId = cloudId,
-            body = CreateShareLinkRequestDto(role = role.name.lowercase())
-        ).deepLink
+            body = CreateShareLinkRequestDto(
+                role = role.name.lowercase()
+            )
+        )
+
+        return toPublicShareLink(response.deepLink)
     }
 
     override suspend fun acceptShareLink(token: String): Long {
@@ -773,5 +777,32 @@ class StoryRepositoryImpl @Inject constructor(
             )
         }
         return array.toString()
+    }
+
+    private fun toPublicShareLink(
+        deepLink: String
+    ): String {
+
+        val oldPrefix = "novelforge://share/"
+        val newPrefix = "https://lorewriter.net/share/"
+
+        return when {
+
+            deepLink.startsWith(newPrefix) -> {
+                deepLink
+            }
+
+            deepLink.startsWith(oldPrefix) -> {
+                val token = deepLink
+                    .removePrefix(oldPrefix)
+                    .trim()
+
+                "$newPrefix$token"
+            }
+
+            else -> {
+                deepLink
+            }
+        }
     }
 }

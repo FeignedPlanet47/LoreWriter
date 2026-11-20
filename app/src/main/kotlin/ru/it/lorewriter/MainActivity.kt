@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
 
         pendingDeepLink = intent?.dataString
@@ -27,7 +28,9 @@ class MainActivity : ComponentActivity() {
             LoreWriterTheme {
                 LoreWriterApp(
                     deepLink = pendingDeepLink,
-                    onDeepLinkConsumed = { pendingDeepLink = null }
+                    onDeepLinkConsumed = {
+                        pendingDeepLink = null
+                    }
                 )
             }
         }
@@ -35,7 +38,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+
         setIntent(intent)
+
         pendingDeepLink = intent.dataString
     }
 }
