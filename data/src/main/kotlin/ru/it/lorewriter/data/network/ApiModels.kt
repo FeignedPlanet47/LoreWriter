@@ -81,7 +81,8 @@ data class CharacterDto(
     val description: String,
     val personality: String,
     val appearance: String,
-    val notes: String
+    val notes: String,
+    val photoBase64: String = ""
 )
 
 data class StoryPayloadDto(

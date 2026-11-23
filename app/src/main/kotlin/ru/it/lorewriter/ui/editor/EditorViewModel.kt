@@ -205,7 +205,8 @@ class EditorViewModel @Inject constructor(
         description: String,
         personality: String,
         appearance: String,
-        notes: String
+        notes: String,
+        photoBase64: String
     ) {
         saveCharacter(
             CharacterProfile(
@@ -215,7 +216,8 @@ class EditorViewModel @Inject constructor(
                 description = description,
                 personality = personality,
                 appearance = appearance,
-                notes = notes
+                notes = notes,
+                photoBase64 = photoBase64
             )
         )
     }

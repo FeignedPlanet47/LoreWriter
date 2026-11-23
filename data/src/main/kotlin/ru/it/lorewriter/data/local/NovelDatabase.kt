@@ -11,7 +11,7 @@ import androidx.room.migration.Migration
         StoryNodeEntity::class,
         StoryConnectionEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class NovelDatabase : RoomDatabase() {
@@ -77,6 +77,13 @@ abstract class NovelDatabase : RoomDatabase() {
             database.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS index_stories_cloudId_ownerUserId " +
                         "ON stories(cloudId, ownerUserId)"
+            )
+        }
+
+
+        val MIGRATION_6_7 = Migration(6, 7) { database ->
+            database.execSQL(
+                "ALTER TABLE characters ADD COLUMN photoBase64 TEXT NOT NULL DEFAULT ''"
             )
         }
     }

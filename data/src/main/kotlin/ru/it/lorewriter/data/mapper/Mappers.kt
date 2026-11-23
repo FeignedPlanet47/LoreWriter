@@ -56,7 +56,8 @@ fun CharacterEntity.toDomain() = CharacterProfile(
     description = description,
     personality = personality,
     appearance = appearance,
-    notes = notes
+    notes = notes,
+    photoBase64 = photoBase64
 )
 
 fun CharacterProfile.toEntity() = CharacterEntity(
@@ -67,7 +68,8 @@ fun CharacterProfile.toEntity() = CharacterEntity(
     description = description,
     personality = personality,
     appearance = appearance,
-    notes = notes
+    notes = notes,
+    photoBase64 = photoBase64
 )
 
 fun StoryNodeEntity.toDomain() = StoryNode(

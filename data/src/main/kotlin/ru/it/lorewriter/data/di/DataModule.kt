@@ -32,7 +32,8 @@ object DatabaseModule {
                 NovelDatabase.MIGRATION_2_3,
                 NovelDatabase.MIGRATION_3_4,
                 NovelDatabase.MIGRATION_4_5,
-                NovelDatabase.MIGRATION_5_6
+                NovelDatabase.MIGRATION_5_6,
+                NovelDatabase.MIGRATION_6_7
             )
             .build()
 

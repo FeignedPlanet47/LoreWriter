@@ -581,7 +581,8 @@ class StoryRepositoryImpl @Inject constructor(
                 description = character.description,
                 personality = character.personality,
                 appearance = character.appearance,
-                notes = character.notes
+                notes = character.notes,
+                photoBase64 = character.photoBase64
             )
         }
 
@@ -685,7 +686,8 @@ class StoryRepositoryImpl @Inject constructor(
                     description = character.description,
                     personality = character.personality,
                     appearance = character.appearance,
-                    notes = character.notes
+                    notes = character.notes,
+                    photoBase64 = character.photoBase64
                 )
             )
         }

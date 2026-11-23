@@ -49,7 +49,9 @@ data class CharacterEntity(
     val description: String,
     val personality: String,
     val appearance: String,
-    val notes: String
+    val notes: String,
+    @ColumnInfo(defaultValue = "''")
+    val photoBase64: String = ""
 )
 
 @Entity(
